@@ -1,6 +1,9 @@
 // huashu-motion studio. One page, no build step: the om player shows the real composition,
 // this file adds pointing, direct edits and the comment loop around it.
+import { LANGS, pickLang, saveLang, setLang, lang, t, applyI18n } from './i18n.js';
+
 const BOOT = window.OM_BOOT || {};
+setLang(pickLang(BOOT));
 const $ = (s) => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -37,7 +40,14 @@ function toast(html, { bad = false, ms = 3600 } = {}) {
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const fmt = (t) => { t = Math.max(0, t || 0); const m = Math.floor(t / 60), s = t - m * 60; return `${String(m).padStart(2, '0')}:${s.toFixed(2).padStart(5, '0')}`; };
 
+function renderLang() {
+  const sel = $('#lang');
+  sel.replaceChildren(...Object.entries(LANGS).map(([code, d]) => el('option', { value: code, selected: code === lang() }, d.name)));
+  sel.addEventListener('change', () => { saveLang(sel.value); location.reload(); });
+}
+
 async function boot() {
+  applyI18n(); renderLang();
   const st = await (await fetch('/api/state')).json();
   Object.assign(S, { token: st.token, variables: st.variables, comments: st.comments, history: st.history, name: st.name, renderJob: st.render });
   if (st.scan.width) { S.w = st.scan.width; S.h = st.scan.height; }
@@ -52,7 +62,7 @@ async function boot() {
   es.addEventListener('inbox', (e) => { S.comments = JSON.parse(e.data).comments; renderComments(); renderStatus(); renderPins(); renderMarks(); });
   es.addEventListener('render', (e) => onRender(JSON.parse(e.data)));
   es.addEventListener('problem', (e) => toast(esc(JSON.parse(e.data).message), { bad: true }));
-  es.onerror = () => { $('#status').className = 'status bad'; $('#status-text').textContent = '与 studio 断开，重新运行 om studio'; };
+  es.onerror = () => { $('#status').className = 'status bad'; $('#status-text').textContent = t('status.disconnected'); };
   es.onopen = () => renderStatus();
 }
 
@@ -245,7 +255,7 @@ overlay.addEventListener('dblclick', (e) => {
   const hit = objectAt(x, y); if (!hit?.node) return;
   const bound = hit.node.closest('[data-var-text],[data-om-var]') || hit.node.querySelector('[data-var-text],[data-om-var]');
   const v = bound && S.variables.find((d) => d.id === (bound.getAttribute('data-om-var') || bound.getAttribute('data-var-text')));
-  if (!v || (v.type && v.type !== 'string')) { toast('这段文字没有绑定参数，按 C 留言让 Agent 改'); return; }
+  if (!v || (v.type && v.type !== 'string')) { toast(t('edit.unbound')); return; }
   if (S.playing) pause();
   const r = bound.getBoundingClientRect(), p = toFrame(r.left, r.top), { k } = view();
   const cs = win().getComputedStyle(bound);
@@ -256,7 +266,7 @@ overlay.addEventListener('dblclick', (e) => {
     if (done) return; done = true; input.remove();
     if (!save || input.value === v.default) return;
     try { const res = await api('/api/vars', { token: S.token, values: { [v.id]: input.value } }); S.token = res.token; v.default = input.value; }
-    catch (err) { toast(err.status === 409 ? '文件刚被 Agent 改过，已载入最新版本，请再改一次。' : esc(err.message), { bad: true }); refreshState(); }
+    catch (err) { toast(err.status === 409 ? t('edit.conflict') : esc(err.message), { bad: true }); refreshState(); }
   };
   input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') finish(true); if (ev.key === 'Escape') finish(false); ev.stopPropagation(); });
   input.addEventListener('blur', () => finish(true));
@@ -285,17 +295,17 @@ function linkedVars(id) {
 function renderSelection() {
   const box = $('#selection');
   box.innerHTML = '';
-  if (!S.selected) { box.append(el('div', { class: 'empty' }, '点画面里的元素查看它，双击文字直接改；按 ', el('kbd', {}, 'C'), ' 在画面上给 Agent 留言。')); return; }
+  if (!S.selected) { box.append(el('div', { class: 'empty' }, ...t('selection.empty').split('{kbd}').flatMap((s, i) => (i ? [el('kbd', {}, 'C'), s] : [s])))); return; }
   const n = doc()?.querySelector(`[data-om-id="${CSS.escape(S.selected)}"]`);
   const linked = linkedVars(S.selected);
   let label = null;
   try { label = win()?.__om?.hitTest && !n ? (win().__om.regionLabel?.(S.selected) ?? null) : null; } catch {}
   box.append(
     el('div', { class: 'sel-head' },
-      el('div', { class: 'sel-id' }, '#' + S.selected, el('small', {}, n ? n.tagName.toLowerCase() : (label ? `${label} · 画布` : '画布'))),
-      el('button', { class: 'ghost small', onclick: () => setTool('comment') }, '留言给 Agent')),
+      el('div', { class: 'sel-id' }, '#' + S.selected, el('small', {}, n ? n.tagName.toLowerCase() : (label ? `${label} · ${t('selection.canvas')}` : t('selection.canvas')))),
+      el('button', { class: 'ghost small', onclick: () => setTool('comment') }, t('selection.comment'))),
     n && n.textContent.trim() ? el('div', { class: 'sel-text' }, n.textContent.trim().slice(0, 120)) : null,
-    el('div', { class: 'sel-text dim small' }, linked.length ? `可直接改：${linked.map((id) => S.variables.find((v) => v.id === id)?.label || id).join('、')}` : '这个元素没有绑定参数，留言让 Agent 改。'));
+    el('div', { class: 'sel-text dim small' }, linked.length ? t('selection.editable', { list: linked.map((id) => S.variables.find((v) => v.id === id)?.label || id).join(t('list.sep')) }) : t('selection.unbound')));
 }
 
 // ---------- composer ----------
@@ -314,7 +324,7 @@ function openComposer(e, x, y, hit) {
   const scene = sceneAt(t)?.id || null;
   draft = { x, y, t, target: hit?.id || null, scene, element: hit?.node ? cleanHtml(hit.node) : null };
   const ctx = $('#composer-ctx');
-  ctx.innerHTML = `${hit ? `<b>#${esc(hit.id)}</b> · ` : ''}${fmt(t)}${scene ? ` · 场景 ${esc(scene)}` : ''}`;
+  ctx.innerHTML = `${hit ? `<b>#${esc(hit.id)}</b> · ` : ''}${fmt(t)}${scene ? ` · ${t('composer.scene')} ${esc(scene)}` : ''}`;
   const c = $('#composer'), stage = $('#stage').getBoundingClientRect();
   c.hidden = false;
   const left = Math.min(Math.max(12, e.clientX - stage.left + 12), stage.width - 332);
@@ -333,7 +343,7 @@ async function sendComment() {
     if (!S.comments.some((x) => x.id === c.id)) S.comments.push(c);
     closeComposer();
     renderComments(); renderPins(); renderMarks(); renderStatus();
-    toast('已发给 Agent。它接单后，这里会显示进度。');
+    toast(t('composer.sent'));
   } catch (err) { toast(esc(err.message), { bad: true }); }
   finally { $('#composer-send').disabled = false; }
 }
@@ -344,35 +354,35 @@ $('#composer-text').addEventListener('keydown', (e) => {
 });
 
 // ---------- comments ----------
-const STATUS = { pending: '待处理', working: 'Agent 正在改', done: '已完成', cancelled: '已取消' };
+const STATUS = { pending: 'comment.pending', working: 'comment.working', done: 'comment.done', cancelled: 'comment.cancelled' };
 function renderComments() {
   const list = $('#comments'); list.innerHTML = '';
   const open = S.comments.filter((c) => c.status === 'pending' || c.status === 'working').length;
   $('#comment-count').textContent = open || '';
-  if (!S.comments.length) { list.append(el('div', { class: 'no-vars' }, '还没有评论。按 C，再点画面上想改的地方。')); return; }
+  if (!S.comments.length) { list.append(el('div', { class: 'no-vars' }, t('comments.empty'))); return; }
   for (const c of [...S.comments].reverse()) {
     list.append(el('div', { class: 'comment', onclick: () => { if (c.t != null) seek(c.t); if (c.target) select(c.target); } },
       el('div', { class: 'c-head' },
-        el('span', { class: 'chip ' + c.status }, STATUS[c.status] || c.status),
+        el('span', { class: 'chip ' + c.status }, STATUS[c.status] ? t(STATUS[c.status]) : c.status),
         el('span', {}, c.t != null ? fmt(c.t) : ''), c.target ? el('span', {}, '#' + c.target) : null,
         el('span', { class: 'c-actions' },
-          c.status === 'pending' ? el('button', { onclick: (e) => { e.stopPropagation(); api(`/api/comments/${c.id}/cancel`).catch((x) => toast(esc(x.message), { bad: true })); } }, '取消') : null,
-          c.status === 'done' ? el('button', { onclick: (e) => { e.stopPropagation(); openReply(e.currentTarget.closest('.comment'), c); } }, '没改对') : null)),
+          c.status === 'pending' ? el('button', { onclick: (e) => { e.stopPropagation(); api(`/api/comments/${c.id}/cancel`).catch((x) => toast(esc(x.message), { bad: true })); } }, t('comment.cancel')) : null,
+          c.status === 'done' ? el('button', { onclick: (e) => { e.stopPropagation(); openReply(e.currentTarget.closest('.comment'), c); } }, t('comment.notRight')) : null)),
       el('div', { class: 'c-text' }, c.text),
-      (c.thread || []).map((m) => el('div', { class: m.who === 'agent' ? 'c-note' : 'c-reply' }, m.who === 'agent' ? m.text || '已处理' : '↩ ' + m.text))));
+      (c.thread || []).map((m) => el('div', { class: m.who === 'agent' ? 'c-note' : 'c-reply' }, m.who === 'agent' ? m.text || t('comment.handled') : '↩ ' + m.text))));
   }
 }
 // Tell the agent what is still wrong; the comment goes back into its inbox with the whole thread.
 function openReply(card, c) {
   if (card.querySelector('.reply')) return;
-  const ta = el('textarea', { rows: 2, placeholder: '哪里还不对？比如：再慢一点，或者换成蓝色' });
+  const ta = el('textarea', { rows: 2, placeholder: t('reply.placeholder') });
   const send = async () => {
     const text = ta.value.trim(); if (!text) return;
-    try { await api(`/api/comments/${c.id}/reopen`, { note: text }); toast('已发回给 Agent'); }
+    try { await api(`/api/comments/${c.id}/reopen`, { note: text }); toast(t('reply.sent')); }
     catch (x) { toast(esc(x.message), { bad: true }); }
   };
   ta.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send(); if (e.key === 'Escape') box.remove(); });
-  const box = el('div', { class: 'reply', onclick: (e) => e.stopPropagation() }, ta, el('div', { class: 'composer-actions' }, el('span', { class: 'hint' }, '⌘↩ 发送'), el('button', { class: 'primary small', onclick: send }, '发回给 Agent')));
+  const box = el('div', { class: 'reply', onclick: (e) => e.stopPropagation() }, ta, el('div', { class: 'composer-actions' }, el('span', { class: 'hint' }, t('reply.hint')), el('button', { class: 'primary small', onclick: send }, t('reply.send'))));
   card.append(box); ta.focus();
 }
 
@@ -396,10 +406,10 @@ function renderStatus() {
   const s = $('#status'), txt = $('#status-text');
   const working = S.comments.find((c) => c.status === 'working');
   const waiting = S.comments.filter((c) => c.status === 'pending');
-  if (S.renderJob?.status === 'running') { s.className = 'status working'; txt.textContent = '正在导出视频…'; }
-  else if (working) { s.className = 'status working'; txt.textContent = `Agent 正在改：${working.text.slice(0, 18)}${working.text.length > 18 ? '…' : ''}`; }
-  else if (waiting.length) { s.className = 'status'; txt.textContent = `${waiting.length} 条评论等 Agent 接单`; }
-  else { s.className = 'status ok'; txt.textContent = `已保存 · 第 ${S.history} 版`; }
+  if (S.renderJob?.status === 'running') { s.className = 'status working'; txt.textContent = t('status.exporting'); }
+  else if (working) { s.className = 'status working'; txt.textContent = t('status.agentWorking', { text: working.text.slice(0, 18) + (working.text.length > 18 ? '…' : '') }); }
+  else if (waiting.length) { s.className = 'status'; txt.textContent = t('status.waiting', { n: waiting.length }); }
+  else { s.className = 'status ok'; txt.textContent = t('status.saved', { n: S.history }); }
   clearTimeout(hintTimer);
   $('#agent-hint').hidden = true;
   if (waiting.length && !working) {
@@ -407,17 +417,17 @@ function renderStatus() {
     hintTimer = setTimeout(() => { if (S.comments.some((c) => c.status === 'pending') && !S.comments.some((c) => c.status === 'working')) $('#agent-hint').hidden = false; }, Math.max(0, 6000 - (Date.now() - oldest)));
   }
 }
-$('#copy-cmd').addEventListener('click', () => { navigator.clipboard?.writeText($('#agent-cmd').textContent); toast('已复制'); });
+$('#copy-cmd').addEventListener('click', () => { navigator.clipboard?.writeText($('#agent-cmd').textContent); toast(t('copied')); });
 
 // ---------- variables ----------
 function renderVars() {
   const box = $('#vars');
   if (box.contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) { S.varsDirty = true; return; }
   box.innerHTML = '';
-  if (!S.variables.length) { box.append(el('div', { class: 'no-vars' }, '这个工程还没有可直接改的参数。让 Agent 把标题、数字、颜色声明成变量（data-composition-variables），这里就会出现输入框。')); return; }
+  if (!S.variables.length) { box.append(el('div', { class: 'no-vars' }, t('vars.none'))); return; }
   const linked = new Set(S.selected ? linkedVars(S.selected) : []);
   const groups = new Map();
-  for (const v of S.variables) { const g = v.group || '画面参数'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(v); }
+  for (const v of S.variables) { const g = v.group || t('vars.group'); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(v); }
   for (const [name, vars] of groups) {
     const g = el('div', { class: 'group' }, el('h4', {}, name));
     for (const v of vars) g.append(field(v, linked.has(v.id)));
@@ -433,7 +443,7 @@ function field(v, linked) {
     row.classList.add('saving');
     try { const r = await api('/api/vars', { token: S.token, values: { [v.id]: value } }); S.token = r.token; v.default = value; }
     catch (e) {
-      toast(e.status === 409 ? '文件刚被 Agent 改过，已载入最新版本，请再改一次。' : esc(e.message), { bad: true });
+      toast(e.status === 409 ? t('edit.conflict') : esc(e.message), { bad: true });
       refreshState();
     } finally { row.classList.remove('saving'); }
   };
@@ -480,7 +490,7 @@ async function refreshState() {
 function renderScenes() {
   const box = $('#scenes'); box.innerHTML = '';
   box.style.display = 'block';
-  if (!S.scenes.length) { box.append(el('div', { class: 'none' }, '没有分镜标签。时间轴上加 tl.addLabel("scene:名字", 秒)，这里就会分段。')); }
+  if (!S.scenes.length) { box.append(el('div', { class: 'none' }, t('scenes.none'))); }
   for (const s of S.scenes) {
     const left = (s.start / S.duration) * 100, width = ((s.end - s.start) / S.duration) * 100;
     box.append(el('div', { class: 'scene', 'data-id': s.id, style: `position:absolute;left:${left}%;width:calc(${width}% - 2px);top:0`, title: s.id },
@@ -520,8 +530,8 @@ document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () 
 $('#play').addEventListener('click', () => (S.playing ? pause() : play()));
 $('#undo').addEventListener('click', doUndo);
 async function doUndo() {
-  try { await api('/api/undo'); toast('已撤回到上一版'); }
-  catch (e) { toast(esc(e.message === 'nothing to undo' ? '没有可以撤回的版本' : e.message), { bad: true }); }
+  try { await api('/api/undo'); toast(t('undo.done')); }
+  catch (e) { toast(esc(e.message === 'nothing to undo' ? t('undo.nothing') : e.message), { bad: true }); }
 }
 
 window.addEventListener('keydown', (e) => {
@@ -547,9 +557,9 @@ function onRender(job) {
   S.renderJob = job; renderStatus();
   $('#export').disabled = job?.status === 'running';
   if (!job) return;
-  if (job.status === 'running') toast(`正在导出 ${job.format.toUpperCase()}…<br><span class="dim small">${esc(job.log?.at(-1) || '首次导出会下载渲染器，需要几分钟')}</span>`, { ms: 0 });
-  if (job.status === 'done') { const name = job.out.split('/').pop(); toast(`导出完成：<a href="/out/${encodeURIComponent(name)}" target="_blank">${esc(name)}</a><br><span class="small">${esc(job.out)}</span>`, { ms: 12000 }); }
-  if (job.status === 'failed') toast(`导出失败：${esc(job.error)}`, { bad: true, ms: 12000 });
+  if (job.status === 'running') toast(`${t('export.running', { format: job.format.toUpperCase() })}<br><span class="dim small">${esc(job.log?.at(-1) || t('export.firstTime'))}</span>`, { ms: 0 });
+  if (job.status === 'done') { const name = job.out.split('/').pop(); toast(`${t('export.done')}<a href="/out/${encodeURIComponent(name)}" target="_blank">${esc(name)}</a><br><span class="small">${esc(job.out)}</span>`, { ms: 12000 }); }
+  if (job.status === 'failed') toast(`${t('export.failed')}${esc(job.error)}`, { bad: true, ms: 12000 });
 }
 
-boot().catch((e) => toast('studio 启动失败：' + esc(e.message), { bad: true, ms: 0 }));
+boot().catch((e) => toast(t('boot.failed') + esc(e.message), { bad: true, ms: 0 }));

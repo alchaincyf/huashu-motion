@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,24 +12,25 @@
 <header class="bar">
   <div class="brand"><span class="logo" aria-hidden="true"></span>huashu-motion</div>
   <div class="crumb"><span id="project-name">…</span><span class="dim" id="project-meta"></span></div>
-  <div class="status" id="status"><span class="dot"></span><span id="status-text">连接中</span></div>
+  <div class="status" id="status"><span class="dot"></span><span id="status-text" data-i18n="status.connecting">连接中</span></div>
   <div class="spacer"></div>
-  <button class="ghost" id="undo" title="撤回到上一版 (⌘Z)">撤回</button>
+  <select class="ghost lang" id="lang" title="界面语言" data-i18n-title="lang.title"></select>
+  <button class="ghost" id="undo" title="撤回到上一版 (⌘Z)" data-i18n-title="undo.title" data-i18n="undo">撤回</button>
   <div class="export">
-    <button class="primary" id="export">导出视频</button>
+    <button class="primary" id="export" data-i18n="export">导出视频</button>
     <div class="menu" id="export-menu" hidden>
-      <button data-format="mp4">MP4 视频</button>
-      <button data-format="mov">MOV（透明底）</button>
-      <button data-format="gif">GIF 动图</button>
+      <button data-format="mp4" data-i18n="export.mp4">MP4 视频</button>
+      <button data-format="mov" data-i18n="export.mov">MOV（透明底）</button>
+      <button data-format="gif" data-i18n="export.gif">GIF 动图</button>
       <button data-format="webm">WebM</button>
     </div>
   </div>
 </header>
 
 <main class="work">
-  <nav class="tools" aria-label="工具">
-    <button class="tool active" data-tool="select" title="选择 (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z"/></svg></button>
-    <button class="tool" data-tool="comment" title="在画面上留言给 Agent (C)"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
+  <nav class="tools" aria-label="工具" data-i18n-aria="tools">
+    <button class="tool active" data-tool="select" title="选择 (V)" data-i18n-title="tool.select"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.5L10 19z"/></svg></button>
+    <button class="tool" data-tool="comment" title="在画面上留言给 Agent (C)" data-i18n-title="tool.comment"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button>
   </nav>
 
   <section class="stage" id="stage">
@@ -43,23 +44,23 @@
     </div>
     <div class="composer" id="composer" hidden>
       <div class="composer-ctx" id="composer-ctx"></div>
-      <textarea id="composer-text" rows="3" placeholder="告诉 Agent 这里要怎么改，比如：这里多停一拍"></textarea>
-      <div class="composer-actions"><span class="hint">⌘↩ 发送 · Esc 取消</span><button class="primary small" id="composer-send">发给 Agent</button></div>
+      <textarea id="composer-text" rows="3" placeholder="告诉 Agent 这里要怎么改，比如：这里多停一拍" data-i18n-placeholder="composer.placeholder"></textarea>
+      <div class="composer-actions"><span class="hint" data-i18n="composer.hint">⌘↩ 发送 · Esc 取消</span><button class="primary small" id="composer-send" data-i18n="composer.send">发给 Agent</button></div>
     </div>
     <div class="agent-hint" id="agent-hint" hidden>
-      <div><b>还没有 Agent 在接单。</b>在你的 Agent 里说「处理 huashu-motion 的评论」，或在终端运行：</div>
-      <code id="agent-cmd">om inbox --wait</code><button class="ghost small" id="copy-cmd">复制</button>
+      <div><b data-i18n="agent.none">还没有 Agent 在接单。</b><span data-i18n="agent.none.body">在你的 Agent 里说「处理 huashu-motion 的评论」，或在终端运行：</span></div>
+      <code id="agent-cmd">om inbox --wait</code><button class="ghost small" id="copy-cmd" data-i18n="copy">复制</button>
     </div>
   </section>
 
   <aside class="side">
     <div class="tabs" role="tablist">
-      <button class="tab active" data-tab="props">参数</button>
-      <button class="tab" data-tab="comments">评论 <span class="count" id="comment-count"></span></button>
+      <button class="tab active" data-tab="props" data-i18n="tab.props">参数</button>
+      <button class="tab" data-tab="comments"><span data-i18n="tab.comments">评论</span> <span class="count" id="comment-count"></span></button>
     </div>
     <div class="panel" id="panel-props">
       <div class="selection" id="selection">
-        <div class="empty">点画面里的元素查看它，双击文字直接改；按 <kbd>C</kbd> 在画面上给 Agent 留言。</div>
+        <div class="empty" data-i18n-html="selection.empty">点画面里的元素查看它，双击文字直接改；按 <kbd>C</kbd> 在画面上给 Agent 留言。</div>
       </div>
       <div id="vars"></div>
     </div>
@@ -71,10 +72,10 @@
 
 <footer class="timeline">
   <div class="transport">
-    <button class="icon" id="play" title="播放 / 暂停 (空格)"><svg viewBox="0 0 24 24" id="play-icon"><path d="M7 4l13 8-13 8z"/></svg></button>
+    <button class="icon" id="play" title="播放 / 暂停 (空格)" data-i18n-title="play.title"><svg viewBox="0 0 24 24" id="play-icon"><path d="M7 4l13 8-13 8z"/></svg></button>
     <span class="clock"><span id="time">00:00.00</span><span class="dim"> / <span id="duration">00:00.00</span></span></span>
     <div class="spacer"></div>
-    <span class="dim small">空格 播放 · ←→ 逐帧 · C 留言 · ⌘Z 撤回</span>
+    <span class="dim small" data-i18n="shortcuts">空格 播放 · ←→ 逐帧 · C 留言 · ⌘Z 撤回</span>
   </div>
   <div class="track" id="track">
     <div class="ruler" id="ruler"></div>

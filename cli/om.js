@@ -18,7 +18,7 @@ const HELP = `huashu-motion ${VERSION} — motion graphics made by your coding a
   om new <dir> [--template t]   start a project (om templates lists them)
   om templates                  starter projects and what each is good for
   om demo [dir]                 copy the showcase film and open it in the studio
-  om studio [dir]               live preview, direct edits, comments for the agent
+  om studio [dir] [--lang zh|en|es]   live preview, direct edits, comments for the agent (UI language; also OM_LANG)
   om inbox [dir] [--wait]       list comments; --wait blocks, claims the next one and prints it
   om look <id|--at sec> [dir]   save the frame (and a close-up of the clicked spot) as PNGs to look at
   om done <id> [dir] --note …   mark a comment handled (the studio shows the note)
@@ -363,7 +363,7 @@ async function studio(dir, flags) {
   const port = Number(flags.port || 4848);
   let started;
   for (let p = port; p < port + 20 && !started; p++) {
-    try { started = await startStudio(project, { port: p }); }
+    try { started = await startStudio(project, { port: p, lang: flags.lang }); }
     catch (e) { if (e.code !== 'EADDRINUSE') throw e; }
   }
   if (!started) throw new OmError(`no free port from ${port}`);
