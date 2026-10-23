@@ -320,11 +320,11 @@ function cleanHtml(node) {
 }
 let draft = null;
 function openComposer(e, x, y, hit) {
-  const t = player.currentTime || 0;
-  const scene = sceneAt(t)?.id || null;
-  draft = { x, y, t, target: hit?.id || null, scene, element: hit?.node ? cleanHtml(hit.node) : null };
+  const at = player.currentTime || 0;
+  const scene = sceneAt(at)?.id || null;
+  draft = { x, y, t: at, target: hit?.id || null, scene, element: hit?.node ? cleanHtml(hit.node) : null };
   const ctx = $('#composer-ctx');
-  ctx.innerHTML = `${hit ? `<b>#${esc(hit.id)}</b> · ` : ''}${fmt(t)}${scene ? ` · ${t('composer.scene')} ${esc(scene)}` : ''}`;
+  ctx.innerHTML = `${hit ? `<b>#${esc(hit.id)}</b> · ` : ''}${fmt(at)}${scene ? ` · ${t('composer.scene')} ${esc(scene)}` : ''}`;
   const c = $('#composer'), stage = $('#stage').getBoundingClientRect();
   c.hidden = false;
   const left = Math.min(Math.max(12, e.clientX - stage.left + 12), stage.width - 332);
