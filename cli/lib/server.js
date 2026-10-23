@@ -18,7 +18,7 @@ const STATIC = {
   '/_om/engine.js': join(PKG, 'runtime/om-engine.js'),
 };
 
-export function startStudio(project, { port = 4848, host = '127.0.0.1' } = {}) {
+export function startStudio(project, { port = 4848, host = '127.0.0.1', lang = process.env.OM_LANG } = {}) {
   const csrf = randomBytes(16).toString('hex');
   const clients = new Set();
   let renderJob = null;
@@ -114,7 +114,7 @@ export function startStudio(project, { port = 4848, host = '127.0.0.1' } = {}) {
       }
 
       if (path === '/') {
-        const html = readFileSync(join(PKG, 'studio/index.html'), 'utf8').replace('<!--OM_BOOT-->', `<script>window.OM_BOOT=${JSON.stringify({ csrf })}</script>`);
+        const html = readFileSync(join(PKG, 'studio/index.html'), 'utf8').replace('<!--OM_BOOT-->', `<script>window.OM_BOOT=${JSON.stringify({ csrf, lang: lang || undefined })}</script>`);
         return send(res, 200, html, TYPES['.html']);
       }
       if (path === '/api/state') return send(res, 200, state());
