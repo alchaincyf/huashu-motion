@@ -47,7 +47,7 @@ Z4 |
 V:DR inst=drums kit=pop
 !mark:open! Z4 |
 !mark:features! !p! C,,4 C,,4 | C,,4 C,,4 | !mp! [C,,^F,,]^F,, ^F,,^F,, [C,,^F,,]^F,, ^F,,^F,, |
-!rise(! !crescendo(! D,,D,, D,,D,, D,,/D,,/D,,/D,,/ D,,/D,,/D,,/D,,/ z2 !crescendo)! !rise)! |
+!rise(! !crescendo(! D,,D,, D,,D,, D,,/D,,/D,,/D,,/ z2 !crescendo)! !rise)! |
 !mark:reveal! !hit! !f! [C,,^C,]^F,, [D,,^F,,]^F,, [C,,^F,,][C,,^F,,] [D,,^F,,]^F,, | [C,,^F,,]^F,, [D,,^F,,]^F,, [C,,^F,,][C,,^F,,] [D,,^F,,]^F,, |
 [C,,^F,,]^F,, [D,,^F,,]^F,, [C,,^F,,][C,,^F,,] [D,,^F,,]^F,, | [C,,^F,,]^F,, [D,,^F,,]^F,, [C,,^F,,] A,,/A,,/ D,,/D,,/ D,,/D,,/ |
 !mark:logo! !ff! !fermata![C,,^C,]8 |

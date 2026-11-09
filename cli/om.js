@@ -33,6 +33,7 @@ const HELP = `huashu-motion ${VERSION} — motion graphics made by your coding a
   om render [dir] [--workers n] [--video extract|seek] [--frames jpg|png]   browsers at once (default: up to 8), how footage is read, the footage cache
   om check [dir] [--samples n] [--source] [--json]   before rendering: structure, scripts, files, motion rules, then sampled frames (cut-off, covered or low-contrast text, blank ends, history-dependent frames)
   om qa [dir|video] [--loop]     check a render: single-frame pops, dead time, hard cuts, motion curve, loop seam
+  om qa [dir|video] --sheet [fps]   also tile the render into contact sheets (default 4 frames a second) to read the film at a glance
   om render [dir] --transparent  overlay for 剪映/Premiere: ProRes 4444 with alpha (or --format webm), no sound
   om fork <dir> <newdir> --size 1080x1920   copy into a new frame size; the re-layout lands in the inbox
   om voice <dir> --text <file|"文本"> | --audio <file> [--voice say:Tingting|zf_xiaobei] [--fit]   narration, word cues, .srt
@@ -273,15 +274,20 @@ async function main() {
 
     case 'qa': {
       // om qa [dir|video] [--loop]: checks the newest render of a project, or a given video file.
-      const { qa, report } = await import('./lib/qa.js');
-      let file = pos[0] || '.';
+      const { qa, report, sheet, sheetReport } = await import('./lib/qa.js');
+      let file = pos[0] || '.', sheetDir = null;
       if (!/\.(mp4|mov|webm)$/i.test(file)) {
         const project = openProject(file), dir = join(project.root, 'out');
+        sheetDir = join(project.root, '.om', 'sheets');
         const vids = existsSync(dir) ? readdirSync(dir).filter((n) => /\.(mp4|webm|mov)$/i.test(n)).map((n) => join(dir, n)) : [];
         if (!vids.length) throw new OmError('nothing rendered yet — run `om render` first, or pass a video file');
         file = vids.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
       }
       const r = qa(resolve(file), { loop: !!flags.loop });
+      if (flags.sheet) {
+        const s = sheet(resolve(file), sheetDir || join(dirname(resolve(file)), 'sheets'), { fps: Number(flags.sheet) > 0 && flags.sheet !== true ? Number(flags.sheet) : 4 });
+        return out(flags.json ? { ...r, sheets: s.sheets } : `${report(r)}\n${sheetReport(s)}`);
+      }
       return out(flags.json ? r : report(r));
     }
 

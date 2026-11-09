@@ -24,11 +24,26 @@
   //   OM.clock(tl, (t) => engine.renderFrame(t), 15)
   // The tween writes through a setter, so draw(t) runs on every render of the timeline — including
   // silent seeks that suppress onUpdate callbacks.
+  // draw(t) runs after every tween of that frame has rendered, whichever way the playhead got there, so it
+  // may read the page (getBoundingClientRect of an element another tween moves) and get this frame's
+  // state. (It used to run inside the clock's own tween, before later tweens: a box drawn round a moving
+  // element sat a frame behind in playback and anywhere at all in a still.)
   OM.clock = function (tl, draw, duration, at) {
     let t = 0;
     const p = {};
-    Object.defineProperty(p, 't', { get: () => t, set: (v) => { t = v; draw(v); } });
+    let seeking = false;
+    Object.defineProperty(p, 't', { get: () => t, set: (v) => { t = v; if (!seeking) draw(v); } });   // free-running playback: drawn from the tween, as before
     tl.fromTo(p, { t: 0 }, { t: duration, duration, ease: 'none', immediateRender: false }, at || 0);
+    // every seek (time, seek, progress — how stills, the studio scrubber and the renderer move the film)
+    // goes through totalTime, and GSAP has flushed its lazy writes by the time that returns
+    const totalTime = tl.totalTime;
+    tl.totalTime = function () {
+      if (!arguments.length) return totalTime.call(this);
+      seeking = true;
+      let r; try { r = totalTime.apply(this, arguments); } finally { seeking = false; }
+      draw(t);
+      return r;
+    };
     draw(0);
     return tl;
   };

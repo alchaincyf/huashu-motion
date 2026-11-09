@@ -3,7 +3,8 @@
 // (stretches where nothing moves), hard cuts, whether the last frame matches the first (loops), and
 // the motion curve per second so a flat film is visible as a flat line.
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { OmError } from './project.js';
 
 const W = 96, H = 54;
@@ -105,4 +106,25 @@ export function report(r) {
   if (r.flatFilm) lines.push(`✗ the whole film barely moves (mean ${r.motion.mean}, ${r.cuts.length} cuts) — it reads as slides. Films people kept averaged 0.85–5.8: cut, change shot scale, bring in a montage burst (rhythm.md)`);
   if (r.loop.checked) lines.push(r.loop.seamless ? `✓ last frame matches the first (diff ${r.loop.firstLastDiff}) — loops cleanly` : `✗ last frame differs from the first (diff ${r.loop.firstLastDiff}) — it will stutter as a loop`);
   return lines.join('\n');
+}
+
+// om qa --sheet — the whole film as a few pictures: frames at a steady rate, tiled left to right, top to
+// bottom. Looking at one still per scene finds layout faults; looking at every quarter second finds what a
+// viewer feels: a stretch where neighbouring tiles are the same picture (dead), a run of scenes that are all
+// the same picture with different content (slides), the one frame where something is half-way and ugly.
+export function sheet(file, outDir, { fps = 4, cols = 6, rows = 6, width = 384 } = {}) {
+  if (!existsSync(file)) throw new OmError(`no such video: ${file}`);
+  const p = probe(file), per = cols * rows, stem = basename(file).replace(/\.[^.]+$/, '');
+  mkdirSync(outDir, { recursive: true });
+  for (const f of readdirSync(outDir)) if (f.startsWith(`${stem}-sheet`)) unlinkSync(join(outDir, f));
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-vf', `fps=${fps},scale=${width}:-2,tile=${cols}x${rows}`, join(outDir, `${stem}-sheet%d.jpg`)]);
+  if (r.status !== 0) throw new OmError(`ffmpeg could not tile ${file}`);
+  const files = readdirSync(outDir).filter((f) => f.startsWith(`${stem}-sheet`)).sort((a, b) => parseInt(a.split('sheet').pop(), 10) - parseInt(b.split('sheet').pop(), 10)).map((f) => join(outDir, f));
+  return { files, fps, cols, rows, sheets: files.map((f, i) => ({ file: f, from: i * per / fps, to: Math.min(p.duration, (i + 1) * per / fps) })) };
+}
+
+export function sheetReport(s) {
+  return [`sheets   ${s.fps} frames a second, read left to right; one row is ${(s.cols / s.fps).toFixed(2)} s`,
+    ...s.sheets.map((x) => `         ${x.from.toFixed(1)}–${x.to.toFixed(1)} s  ${x.file}`),
+    '         look for: neighbouring tiles that are the same picture (dead), scenes that are the same layout with other content (slides), a tile caught half-way that is ugly'].join('\n');
 }

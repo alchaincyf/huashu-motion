@@ -5,7 +5,7 @@ metadata:
   author: "花叔"
   homepage: "https://github.com/alchaincyf"
   repository: "https://github.com/alchaincyf/huashu-motion"
-  version: "0.3.1"
+  version: "0.4.0"
 ---
 
 # huashu-motion
@@ -13,6 +13,27 @@ metadata:
 You are the director, designer and animator. The film is code: one composition (`index.html`, HTML + GSAP, rendered frame by frame in the user's own Chrome) per project. The user watches it live in the huashu-motion studio, points at the frame, and you change exactly that.
 
 Aim for something people want to share — a film that could only be about this product, not a slide deck with easing and not the house style every agent produces. Working code is the starting line; the finished frames are the bar.
+
+## Read this first
+
+**The bar.** The film is the only thing judged. Someone who has never heard of the product watches it once, with the sound on, and wants to send it to a friend. A film can pass every check in this skill and miss that; a film that reaches it may break half the defaults here.
+
+**Three tests, in the order films fail them:**
+
+1. **Is it this product?** Its real interface, real output and real words, in its own colours. Cover the logo: could the film be about a competitor?
+2. **Does the energy have a shape?** A hook inside 3 s, a burst, one stop, a peak, a landing. `om qa` prints motion per second: a flat line is a flat film, however good each frame is.
+3. **Is any stretch a slide?** A thing on a ground with a caption under it is a slide, however well it eases in. Every stretch gets its own shot scale and its own move ([punch-up.md](references/punch-up.md) §3).
+
+**Which job is this?**
+
+| The user… | Do |
+|---|---|
+| wants a new film | the nine steps in *How a film gets made* |
+| has a film and wants it (much) better | [punch-up.md](references/punch-up.md): diagnose with numbers, keep the idea and the words, rebuild the shots and the score |
+| pointed at a frame | *Handling a comment*: that place, that time, nothing else |
+| wants an overlay, a loop or a single shot | steps 3–6 and 8; the directions gate only if no style was given |
+
+**What is fixed, and what is yours.** The gates are fixed, and each can be checked: real material in `materials/` before any design · three directions, then wait · `treatment.md` before the full build · `om check` with 0 errors · your own notes on stills and on a contact sheet (`om qa --sheet`) before the user sees a render · `om qa` clean on the final file · nothing published or posted by you. Everything between the gates is a default taken from films that worked. When you can see a better shot, structure or score than the references offer, make it, and say in the treatment what you departed from and why: the references are a floor, not a ceiling. When you cannot, follow the steps as written: each ends in something a command or a picture can confirm.
 
 ## The tool
 
@@ -35,6 +56,7 @@ $OM fonts · $OM fonts add "Noto Sans SC" <dir>   # bundled typefaces (CJK 500�
 $OM render <dir> --blur               # motion blur: up to 8 subframes averaged per frame, for fast UI and camera moves
 $OM check <dir>                        # before rendering: scripts, files, motion rules, then sampled frames (cut-off / covered / low-contrast text)
 $OM qa <dir> [--loop]                  # check the newest render: single-frame pops, dead time, cuts, motion curve, loop seam
+$OM qa <dir> --sheet                   # the same, plus the whole film tiled at 4 frames a second: read it at a glance
 $OM still <page.html|dir> --at 0,2.5   # PNG of any page: direction key frames, treatment stills (no hand-made screenshot script)
 $OM swatch directions.md          # the cards' Palette: lines as one PNG, with contrast and house-look warnings
 $OM learn <topics…>                   # before a film: this user's preferences + experience from past films
@@ -63,9 +85,9 @@ $OM undo <dir> · $OM scan <dir> · $OM doctor
 2. **Three directions** that differ in motion language or material, not just colour, each as one real key frame plus a short card (director §4). Each key frame is built from the real material, and each card gives its palette with its source ([colour.md](references/colour.md)): the product's own colours first; the three differ in language, structure and how they use the material, not in inventing new colours. One of the three — exactly one — is a depth direction (the interface in space or the product's things as objects in a studio, [depth.md](references/depth.md)), so the user can choose it; the other two are other styles with no 3D as their idea (kinetic type, a cursor demo, a collage, a hand-drawn world…), and every set of three has them. Recommend by the product and what the user said, not 3D by default: depth suits a premium launch, an object, a layered interface; a changelog, a typographic claim or a calm explainer usually wants one of the others. Leave the depth direction out only when the brief rules it out ("flat", "no 3D", a diagram). Music is not one of the choices — users can't judge it from a card. After the direction is chosen, pick the music world yourself from the product's character ([music.md](references/music.md)) and note it in the treatment; offer music options only if the user asks. `om sound` warns when a score repeats an example's band or a recent film's. `om swatch` shows the palettes beside the key frames. Skip only when the user named a style or the project already has one.
 3. **Treatment.** Write `treatment.md` in the project before building the film: no full build until it exists. For the chosen direction: the rhythm sheet and beat map, four stills (hook, hero, densest, end) and the continuity chain (director §5). The rhythm sheet comes from [rhythm.md](references/rhythm.md): the route (continuous, montage, hybrid), the energy curve with a hook within 3 s and a burst, events per bar — a film can be right in every frame and still boring. Read the language file and the techniques it uses ([techniques.md](references/library/techniques.md)).
 4. **Build the hardest shot first.** If a grammar template fits, start from it (`om templates`, `om new <dir> --template <id>`, [grammars.md](references/grammars.md)); otherwise `om new <dir>` and write `index.html` following the contract below. Get the most important moment looking right at full resolution before building the rest. Mark sound as you animate: `OM.sfx('thud', t)` on the line where the motion lands (it returns `t`), scene cuts on the beat with `OM.music({ bpm })` + `OM.beat(n)` ([sound.md](references/sound.md)).
-5. **Look at it.** Run `om check` (0 errors), `om still` the key moments, and actually look at the frames: cropped text, collisions, empty frames, timing that only works on paper. Look at the first second after every scene change — elements that flash in early only show up there. After a render, `om qa` lists single-frame pops, dead time, an empty frame 0 (the poster), a flat opening and a film that barely moves; every ✗ is fixed before anyone sees the film (unless the brief asked for calm).
+5. **Look at it.** Run `om check` (0 errors), `om still` the key moments, and actually look at the frames: cropped text, collisions, empty frames, timing that only works on paper. Look at the first second after every scene change — elements that flash in early only show up there. After a render, `om qa` lists single-frame pops, dead time, an empty frame 0 (the poster), a flat opening and a film that barely moves; every ✗ is fixed before anyone sees the film (unless the brief asked for calm). `om qa --sheet` tiles the render into contact sheets: read them for runs of identical tiles (dead), scenes that are one layout with other content (slides) and frames caught half-way that are ugly.
    **Give yourself the notes the user would.** Films that came out well had two or three rounds of notes from a demanding user; a one-line user gives none. Before showing the first full render, watch it at normal speed (or have a separate agent watch it cold) and write the three notes a demanding director would give, then fix them. The notes that came up most: boring — the same energy throughout, no burst, no stop; the opening is not one strong idea; visually thin — one ground and one line colour for the whole film; fallback or ugly fonts, text over the UI; nothing in it that could only be this product.
-6. **Give it sound.** A film ships with music and effects — silent motion feels dry. `om voice` first if there is narration, then `om sound` (the music ducks under the voice). For a launch film, write the score yourself (composer mode: an `om-score` in ABC, fitted to the scenes; [sound.md](references/sound.md) and its annotated [scores](references/scores/)); a built-in direction (`OM.music({ product })`) is the quick fallback. Aim for a hit on every landing that matters (roughly 8–15 per 30 s). You can't hear it, so check the spectrogram (`ffmpeg -i assets/sound.wav -lavfi showspectrumpic=s=1600x400 spec.png`). Skip only for `--transparent` overlays or when the user asks for silence.
+6. **Give it sound.** A film ships with music and effects — silent motion feels dry. `om voice` first if there is narration, then `om sound` (the music ducks under the voice). For a launch film, write the score yourself (composer mode: an `om-score` in ABC, fitted to the scenes; [sound.md](references/sound.md) and its annotated [scores](references/scores/)); a built-in direction (`OM.music({ product })`) is the quick fallback. Aim for a hit on every landing that matters (roughly 8–15 per 30 s). Fix every `warning score:` line `om sound` prints (a bar that does not add up, a voice that stops early: wrong notes from there on). You can't hear it, so check the spectrogram (`ffmpeg -i assets/sound.wav -lavfi showspectrumpic=s=1600x400 spec.png`). Skip only for `--transparent` overlays or when the user asks for silence.
 7. **Hand over the studio.** Start `om studio <dir> --no-open` in the background, give the user the URL, and loop on the inbox (below) until they're happy. After a timing change, re-run `om sound`.
 8. **Export** with `om render`. Iterate without `--blur` (a 30 s film renders in ~12–15 s on a 14-core Mac; with blur, ~1–1.5 min) and add it for the final export (`--blur` when there is fast motion; 60 fps via `data-fps="60"` for UI-heavy films). Run `om qa` on the result (`--loop` for loops). Then `om share <dir>` and write the post into `out/share/share.md` in the user's language: what the film is, one concrete detail of how it was made (their one-line request, a note they gave in the studio, the score it wrote). Report the film, the GIF and share.md, and say in one line that the end carries a small signature they can switch off. Never post anything yourself.
 9. **Harvest.** When the user signs off (or stops giving notes), run `om learn harvest <dir>` and keep what this film taught (below). Not optional: it is how the next film starts ahead.

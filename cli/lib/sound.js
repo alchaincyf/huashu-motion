@@ -537,6 +537,8 @@ export async function sound(project, opts = {}, log = () => {}) {
     try { lines.push(...soundprintReport(project.root, readScore(html)).lines); } catch { /* a score the print cannot read still plays */ }
     lines.push(`fit      ${composed.marks.length ? `marks on the picture: ${composed.marks.join(' · ')}` : 'no !mark:name! matched a scene label — the score plays from the start at its written tempo'}${composed.unmatched.length ? ` · unmatched: ${composed.unmatched.join(', ')}` : ''}`);
     if (composed.stretches.length) lines.push(`tempo    ${composed.stretches.map((x) => `${x.from}→${x.to} ${x.qpm.toFixed(1)} bpm (${x.bend >= 0 ? '+' : ''}${(x.bend * 100).toFixed(1)}%)`).join(' · ')}${composed.stretches.some((x) => Math.abs(x.bend) > 0.08) ? ' — a stretch bent more than 8 %: add or remove bars there instead' : ''}`);
+    for (const w of (composed.warnings || []).slice(0, 6)) lines.push(`warning  score: ${w}`);
+    if ((composed.warnings || []).length > 6) lines.push(`warning  score: … and ${composed.warnings.length - 6} more bars that do not add up`);
     if (composed.end > p.duration + 0.3) lines.push(`warning  the score runs to ${composed.end.toFixed(2)}s, past the film's end (${p.duration.toFixed(2)}s); it is faded out`);
   }
   if (musicOn && !trackInfo && !composed) {

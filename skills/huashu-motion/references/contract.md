@@ -49,9 +49,19 @@ Every film of 4 s or more ends with a small "Made with huashu-motion" for its la
 
 One paused timeline at `window.__timelines[<composition-id>]`. Without `data-duration` on the root, the film is as long as the timeline, so hold variables can change the length — end with the closing hold, e.g. `tl.to({}, { duration: V.endHold })`. Keep every position ≥ 0 (a negative position shifts the whole timeline), and remember `fromTo` renders its start state immediately (`immediateRender: false` or `set` at the moment when something must not exist earlier).
 
+## A frame that is the same however it was reached
+
+Stills, the studio's scrubber and the renderer all jump to a time; none of them plays up to it. These habits keep a frame identical from any seek (each one has cost a film a wrong frame):
+
+- `fromTo` with both ends written and `immediateRender: false`. A `to` starts from wherever the element happens to be, which depends on what rendered before it. A camera is a list of poses kept in a variable, each move going from the last pose to the next.
+- Never `overwrite: true`: on a timeline that is built once, it removes every earlier tween of that target, including moves the film has already made.
+- Hide a group with `opacity`, not `visibility`: a child whose own `visibility` a tween set to `visible` shows through a hidden parent.
+- Under `om render --blur` a cut at an exact frame time is a blend of two shots: put cuts half a frame in, `(Math.floor(t * fps) + 0.5) / fps`. Text that changes every frame (a counter) is computed from the whole frame, not from `t`.
+- A transformed wrapper is a new stacking context: `mix-blend-mode` inside it blends with the wrapper, not with what is behind it. Give the wrapper the ground it should blend with.
+
 ## Runtime helpers — `vendor/om.js`
 
-- `OM.clock(tl, t => draw(t), duration)` — drive a frame-by-frame canvas/WebGL engine from the timeline.
+- `OM.clock(tl, t => draw(t), duration)` — drive a frame-by-frame canvas/WebGL engine from the timeline. On every seek `draw(t)` runs after all the tweens of that frame, so it may read the page: a selection box, a cursor or a highlight can follow an element another tween moves by reading its `getBoundingClientRect()` (divide by the film's on-screen scale). Projects made before 2026-11 carry an older `vendor/om.js` in which draw ran first: copy the current `runtime/om.js` over it.
 - `OM.region(id, box(t), label)` — pickable canvas regions.
 - `OM.space('#world' | threeCamera, { fov })` — a camera in 3D ([depth.md](depth.md)). `cam.set(pose)`, `cam.to(tl, at, { ...pose, duration, ease })`; a pose is `target: [x,y,z] | '#el'`, `distance`, `yaw` / `pitch` / `roll` (degrees), `fov`, or `fit: '#el'` with `pad`, or `flat: true` (a page's resting pose: z = 0 lands exactly on the layout), `position: [x,y,z]`, `dolly` (× distance). Moves run on arcs round the target; the pose is a pure function of time (`cam.pose(t)`, `cam.apply(t)`). A page world is an absolutely placed element whose layers sit at `translate3d`/`rotate` (page px, y down); its parent gets the perspective. `cam.attach(threeCamera)` poses a Three camera over the same page coordinates. `cam.locate('#el')` gives an element's centre in world coordinates.
 - `vendor/three.min.js` (Three.js r186 + RoomEnvironment, GLTF/SVG/HDR loaders, RoundedBox, EffectComposer with Bokeh/Bloom/Output passes, Reflector, as `window.THREE`) and `vendor/om-three.js` (`window.OM3`), copied by the `object-3d` template:

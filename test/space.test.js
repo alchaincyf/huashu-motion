@@ -89,3 +89,18 @@ test('OM.space: the same pose drives a Three-style camera (position, look direct
     assert.ok(Math.abs(r2.p.y - 5) < 1e-6 && Math.abs(r2.p.z - 10 * Math.cos(Math.PI / 6)) < 1e-6, JSON.stringify(r2));
   } finally { await film.close(); }
 });
+
+test('OM.clock: draw(t) sees this frame — an element moved by a later tween is read where it is now, seeking forwards or backwards', { skip }, async () => {
+  const film = await openFilm(spaceFilm(`
+    window.seen = [];
+    OM.clock(tl, (t) => { window.seen.push([Math.round(t * 100) / 100, box('#a')[0]]); }, 3);
+    tl.fromTo('#a', { x: 0 }, { x: 1000, duration: 1, ease: 'none', immediateRender: false }, 1);   // starts after the clock's own tween
+    tl.to({}, { duration: 1 }, 2);`), {});
+  try {
+    const at = async (t) => film.evaluate(`(window.__timelines.film.time(${t}), window.seen.at(-1))`);
+    assert.deepEqual(await at(1.5), [1.5, 800]);
+    assert.deepEqual(await at(2.5), [2.5, 1300]);
+    assert.deepEqual(await at(1.25), [1.25, 550], 'backwards too');
+    assert.deepEqual(await at(0.5), [0.5, 300]);
+  } finally { await film.close(); }
+});

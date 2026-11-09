@@ -43,7 +43,7 @@ V:DR inst=drums kit=pop
 </script>
 ```
 
-ABC as usual — `X T M L Q K` headers, one `V:` per part, notes `C D E` (C4 upward), `c d e` an octave up, `,` and `'` for octaves, `^ _ =` accidentals, lengths `2 /2 3/2`, rests `z` and `Z4` (four bars), chords `[CEG]`, ties `-`, triplets `(3`, repeats `|: :|`, inline `[M:3/4]` `[K:G]` `[Q:1/4=96]`. Write every bar in every voice; the voices must add up to the same length.
+ABC as usual — `X T M L Q K` headers, one `V:` per part, notes `C D E` (C4 upward), `c d e` an octave up, `,` and `'` for octaves, `^ _ =` accidentals, lengths `2 /2 3/2`, rests `z` and `Z4` (four bars), chords `[CEG]`, ties `-`, triplets `(3`, repeats `|: :|`, inline `[M:3/4]` `[K:G]` `[Q:1/4=96]`. Write every bar in every voice; the voices must add up to the same length. `om sound` counts them: a bar that is too long or too short, or a voice that stops early, is printed as a `warning score:` line. Fix each one, because from that bar on the voice is off the others and every note after it is wrong. An inline `[K:]` holds from its beat on for every voice, whichever voice wrote it; `[M:]` is written in every voice.
 
 Voice attributes: `inst=` the instrument, `role=melody` (brought forward, a hair early, centred), `gain=`, `transpose=`.
 

@@ -98,3 +98,34 @@ V:P inst=warmpad
   assert.ok(rms(4.1, 5.95) < 1e-4, `silence after the stop, got rms ${rms(4.1, 5.95)}`);
   assert.ok(rms(6.2, 7.5) > 1e-3, 'the band comes back on the next note');
 });
+
+test('parseAbc: a key change holds from its beat for every voice, and never leaks into the start of the next voice', () => {
+  const s = parseAbc(`X:1
+M:4/4
+L:1/4
+K:Cm
+V:A inst=piano
+E E E E | [K:D] F F F F |
+V:B inst=piano
+E E E E | F F F F |`);
+  const of = (v, beat) => s.events.find((e) => e.voice === v && e.beat === beat).midi;
+  assert.equal(of('A', 0), 63, 'E flat in C minor');
+  assert.equal(of('A', 4), 66, 'F sharp once the key is D');
+  assert.equal(of('B', 0), 63, 'the second voice starts in the head key, not in the key the first one ended in');
+  assert.equal(of('B', 4), 66, 'and changes key on the same beat without writing it again');
+});
+
+test('parseAbc: a bar that does not add up, and a voice that stops early, are reported', () => {
+  const s = parseAbc(`X:1
+M:4/4
+L:1/8
+K:C
+V:A inst=piano
+C2 C2 C2 C2 | C2 C2 C2 C2 C | C8 |
+V:B inst=piano
+C8 | C8 |`);
+  assert.equal(s.warnings.length, 2);
+  assert.match(s.warnings[0], /voice A bar 2 has 4\.5 beats, the meter wants 4/);
+  assert.match(s.warnings[1], /voice B ends at beat 8/);
+  assert.deepEqual(parseAbc(CUE).warnings, [], 'a score that adds up is silent');
+});

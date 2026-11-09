@@ -62,5 +62,5 @@ V:DR inst=drums kit=pop
 !mf! [C,,^F,,]^F,, [C,,^F,,]^F,, [C,,^F,,]^F,, [C,,^F,,]^F,, |
 [M:3/4] !rise(! !crescendo(! D,,/D,,/D,,/D,,/ D,,/D,,/D,,/D,,/ D,,/D,,/ z !crescendo)! !rise)! |
 [M:4/4] !mark:made! !f! [C,,^C,]^F,, [D,,^F,,]^F,, [C,,^F,,][C,,^F,,] [D,,^F,,]^F,, | [C,,^F,,]^F,, [D,,^F,,]^F,, [C,,^F,,][C,,^F,,] [D,,^F,,]^F,, |
-[M:3/4] [C,,^F,,]^F,, [D,,^F,,] A,,/A,,/ D,,/D,,/D,,/D,, |
+[M:3/4] [C,,^F,,]^F,, [D,,^F,,] A,,/A,,/ D,,/D,,/D,,/D,,/ |
 [M:3/4] !mp! ^F,,2 ^F,,2 z2 | [M:4/4] !mark:logo! !ff! !fermata![C,,^C,]8 |

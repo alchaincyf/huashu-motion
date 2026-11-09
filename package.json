@@ -1,6 +1,6 @@
 {
   "name": "huashu-motion",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Make motion graphics with your own coding agent — point at the frame to change it. Open, local, with sound.",
   "type": "module",
   "bin": { "om": "cli/om.js", "huashu-motion": "cli/om.js" },

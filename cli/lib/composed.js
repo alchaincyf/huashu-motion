@@ -122,7 +122,7 @@ export function renderComposed(text, { labels = {}, marks = {}, duration, seed =
   const fitted = perf.fit;
   const report = {
     title: score.title || 'untitled', notes: perf.notes.length, voices: score.order.map((v) => `${v}:${score.voices[v].inst}`), end: perf.end,
-    marks: (fitted?.marks || []).map((m) => `${m.name} ${m.at.toFixed(2)}s`), points: perf.cues.filter((c) => c.type === 'mark').map((c) => ({ name: c.name, at: c.at })), unmatched: score.cues.filter((c) => c.type === 'mark' && align[c.name] == null).map((c) => c.name),
+    marks: (fitted?.marks || []).map((m) => `${m.name} ${m.at.toFixed(2)}s`), points: perf.cues.filter((c) => c.type === 'mark').map((c) => ({ name: c.name, at: c.at })), unmatched: score.cues.filter((c) => c.type === 'mark' && align[c.name] == null).map((c) => c.name), warnings: score.warnings || [],
     stretches: fitted?.stretches || [], start: perf.start,
   };
   return { music: { L, R }, hits: sfx, perf, report };

@@ -6,7 +6,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { qa } from '../cli/lib/qa.js';
+import { qa, sheet } from '../cli/lib/qa.js';
 
 globalThis.window = {};
 globalThis.document = { querySelector: () => null };
@@ -88,4 +88,14 @@ test('om qa: a film that stands still at the start and never cuts is flagged; a 
   const c = runQa(fade);
   assert.equal(c.firstFrame.empty, true);
   assert.ok(c.firstFrame.contentAt > 0.2 && c.firstFrame.contentAt < 1.6, JSON.stringify(c.firstFrame));
+});
+
+test('om qa --sheet tiles the film at a steady rate and says which seconds each sheet covers', { skip: !has && 'no ffmpeg' }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'om-sheet-'));
+  ff(['-f', 'lavfi', '-i', 'testsrc=s=320x180:r=30:d=5', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', join(dir, 'a.mp4')]);
+  const s = sheet(join(dir, 'a.mp4'), join(dir, 'sheets'), { fps: 4, cols: 4, rows: 3 });
+  assert.equal(s.files.length, 2, '20 frames at 12 a sheet');
+  assert.deepEqual(s.sheets.map((x) => [x.from, x.to]), [[0, 3], [3, 5]]);
+  const again = sheet(join(dir, 'a.mp4'), join(dir, 'sheets'), { fps: 2, cols: 4, rows: 3 });
+  assert.equal(again.files.length, 1, 'sheets of an earlier run are replaced, not mixed in');
 });

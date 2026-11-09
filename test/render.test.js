@@ -131,3 +131,15 @@ test('om render: a <video> without data-duration plays on (not frozen), and an u
   assert.ok(d / a.length > 5, `the footage moves between 0.2 s and 1.5 s (mean difference ${(d / a.length).toFixed(1)})`);
   assert.equal(hasAudio(out), true, 'the clip sound is in the film');
 });
+
+test('nextOutput: one past the highest version there is, never a gap left by deleted renders', async () => {
+  const { nextOutput } = await import('../cli/lib/render.js');
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join, basename } = await import('node:path');
+  const root = mkdtempSync(join(tmpdir(), 'om-next-'));
+  mkdirSync(join(root, 'out'));
+  writeFileSync(join(root, 'out', `${basename(root)}-v4.mp4`), '');
+  assert.equal(basename(nextOutput({ root }, 'mp4')), `${basename(root)}-v5.mp4`);
+  assert.equal(basename(nextOutput({ root }, 'gif')), `${basename(root)}-v6.gif`);
+});

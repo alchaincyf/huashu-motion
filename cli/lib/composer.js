@@ -82,10 +82,13 @@ export function parseAbc(text) {
   }
   if (!order.length) vdef('1');
   const [mn, md] = meterOf(head.M);
-  const st = Object.fromEntries(order.map((v) => [v, { beat: 0, acc: {}, dyn: DYN.mf, ramp: null, tieFrom: null, repeatStart: 0, lastRepeat: -1 }]));
+  const st = Object.fromEntries(order.map((v) => [v, { beat: 0, acc: {}, dyn: DYN.mf, ramp: null, tieFrom: null, repeatStart: 0, lastRepeat: -1, bar: 1, barStart: 0 }]));
+  // A key change holds from its beat on, for every voice, whichever voice wrote it (voices are read one after
+  // another, so a key kept as running state leaked from the end of one voice into the start of the next).
+  const keys = [{ beat: 0, key: keySignature(head.K) }], warnings = [];
   const cues = [], riseOpen = {};
   const events = [], tempo = [{ beat: 0, qpm: qpmOf(head.Q) || 90 }], rits = [], breaths = [], fermatas = [], pedal = {}, ramps = [];
-  let key = keySignature(head.K), meter = [mn, md], L = head.L ? frac(head.L.replace(/^1\//, '1/'), 0.125) : (mn / md < 0.75 ? 1 / 16 : 1 / 8);
+  let meter = [mn, md], L = head.L ? frac(head.L.replace(/^1\//, '1/'), 0.125) : (mn / md < 0.75 ? 1 / 16 : 1 / 8);
   let barLen = meter[0] * 4 / meter[1];
   let vcur = order[0], ritOpen = null;
 
@@ -118,6 +121,11 @@ export function parseAbc(text) {
       const k = toks[t];
       if (k.bar != null) {
         s.acc = {};
+        const got = s.beat - s.barStart;
+        if (got > 1e-6) {   // a bar that is too long or too short moves everything after it off the other voices
+          if (Math.abs(got - barLen) > 1e-4 && !(s.bar === 1 && got < barLen)) warnings.push(`voice ${vid} bar ${s.bar} has ${+got.toFixed(3)} beats, the meter wants ${+barLen.toFixed(3)}`);
+          s.bar++; s.barStart = s.beat;
+        }
         if (k.bar.includes(':') && k.bar.indexOf(':') > k.bar.indexOf('|') && k.bar.startsWith('|')) repStart = t + 1;
         else if (/^:/.test(k.bar) && s.lastRepeat !== t) { s.lastRepeat = t; t = repStart - 1; continue; }
         else if (/:$/.test(k.bar)) repStart = t + 1;
@@ -125,7 +133,7 @@ export function parseAbc(text) {
       }
       if (k.field) {
         const [f, val] = [k.field[0], k.field.slice(2)];
-        if (f === 'K') key = keySignature(val);
+        if (f === 'K') keys.push({ beat: s.beat, key: keySignature(val) });
         if (f === 'M') { meter = meterOf(val); barLen = meter[0] * 4 / meter[1]; }
         if (f === 'L') L = frac(val.replace(/^1\//, '1/'), L);
         if (f === 'Q') tempo.push({ beat: s.beat, qpm: qpmOf(val) || tempo.at(-1).qpm });
@@ -155,7 +163,8 @@ export function parseAbc(text) {
         const parts = k.note.startsWith('[') ? [...k.note.slice(1, -1).matchAll(/([\^_=]*)([A-Ga-g])([,']*)([0-9/]*)/g)] : [/^([\^_=]*)([A-Ga-gzxZ])([,']*)/.exec(k.note)];
         if (k.note.startsWith('[') && !k.len && parts[0]?.[4]) len = frac(parts[0][4], 1) * L * 4;
         if (tuplet) { len *= tuplet.q / tuplet.n; if (--tuplet.left <= 0) tuplet = null; }
-        if (/[zxZ]/.test(k.note)) { s.beat += /Z/.test(k.note) ? barLen * frac(k.len, 1) : len; deco = []; continue; }
+        if (/Z/.test(k.note)) { const n = frac(k.len, 1); s.beat += barLen * n; s.bar += n - 1; s.barStart += barLen * (n - 1); deco = []; continue; }   // Z4: four whole bars
+        if (/[zx]/.test(k.note)) { s.beat += len; deco = []; continue; }
         const fermata = deco.includes('fermata'), accent = deco.includes('accent') || deco.includes('>');
         if (fermata) fermatas.push(s.beat + len);
         const chordNotes = [];
@@ -163,14 +172,14 @@ export function parseAbc(text) {
           const U = letter.toUpperCase(), octave = (letter === U ? 4 : 5) + (oct.match(/'/g) || []).length - (oct.match(/,/g) || []).length;
           const id = `${U}${octave}`;
           if (acc) s.acc[id] = acc.startsWith('^') ? acc.length : acc.startsWith('_') ? -acc.length : 0;
-          const a = s.acc[id] ?? (v.inst === 'drums' ? 0 : key[U] ?? 0);
-          chordNotes.push(12 * (octave + 1) + LETTER[U] + a + v.transpose);
+          const keyed = s.acc[id] == null && v.inst !== 'drums';   // takes the key signature, resolved once every voice is read
+          chordNotes.push([12 * (octave + 1) + LETTER[U] + (s.acc[id] ?? 0) + v.transpose, keyed ? U : null]);
         }
         const tie = s.tieFrom && s.tieFrom.beat + s.tieFrom.dur >= s.beat - 1e-6;
-        chordNotes.forEach((midi, ci) => {
-          const prev = tie ? events.find((e) => e.voice === vid && e.midi === midi && Math.abs(e.beat + e.dur - s.beat) < 1e-6) : null;
+        chordNotes.forEach(([midi, keyed], ci) => {
+          const prev = tie ? events.find((e) => e.voice === vid && e.midi === midi && e.keyed === keyed && Math.abs(e.beat + e.dur - s.beat) < 1e-6) : null;
           if (prev) { prev.dur += len; return; }
-          events.push({ voice: vid, beat: s.beat, dur: len, midi, vel: s.dyn, accent, fermata, top: ci === chordNotes.length - 1 && chordNotes.length > 1, chord: chordNotes.length });
+          events.push({ voice: vid, beat: s.beat, dur: len, midi, keyed, vel: s.dyn, accent, fermata, top: ci === chordNotes.length - 1 && chordNotes.length > 1, chord: chordNotes.length });
         });
         s.tieFrom = null;
         s.beat += len;
@@ -183,7 +192,7 @@ export function parseAbc(text) {
     const parts = item.text.split(/(\[V:[^\]]+\])/);
     for (const part of parts) {
       const vm = /^\[V:([^\]]+)\]$/.exec(part);
-      if (vm) { vcur = vdef(vm[1].trim()); if (!st[vcur]) st[vcur] = { beat: 0, acc: {}, dyn: DYN.mf, ramp: null, tieFrom: null, lastRepeat: -1 }; continue; }
+      if (vm) { vcur = vdef(vm[1].trim()); if (!st[vcur]) st[vcur] = { beat: 0, acc: {}, dyn: DYN.mf, ramp: null, tieFrom: null, lastRepeat: -1, bar: 1, barStart: 0 }; continue; }
       if (part.trim()) run(part, vcur);
     }
   }
@@ -194,8 +203,14 @@ export function parseAbc(text) {
     const start = inside[0]?.vel ?? DYN.mf, endV = after && after.vel !== start ? after.vel : Math.max(0.15, Math.min(0.95, start + 0.2 * r.dir));
     for (const e of inside) e.vel = start + (endV - start) * ((e.beat - r.from) / Math.max(1e-6, r.to - r.from));
   }
+  keys.sort((a, b) => a.beat - b.beat);
+  for (const e of events) {
+    if (e.keyed) { let k = keys[0].key; for (const c of keys) if (c.beat <= e.beat + 1e-6) k = c.key; e.midi += k[e.keyed] ?? 0; }
+    delete e.keyed;
+  }
   const length = Math.max(0, ...Object.values(st).map((x) => x.beat));
-  return { title: head.T, meter, barLen, events: events.sort((a, b) => a.beat - b.beat), voices, order, tempo, rits, breaths, fermatas, pedal, cues, length };
+  for (const v of order) if (st[v].beat > 0 && length - st[v].beat > 1e-4) warnings.push(`voice ${v} ends at beat ${+st[v].beat.toFixed(3)}, the score at ${+length.toFixed(3)}: write every bar in every voice`);
+  return { title: head.T, meter, barLen, events: events.sort((a, b) => a.beat - b.beat), voices, order, tempo, rits, breaths, fermatas, pedal, cues, length, warnings };
 }
 
 // Beats (quarter notes) → seconds, through the tempo changes, ritardandos (tempo eases down to 70 %),

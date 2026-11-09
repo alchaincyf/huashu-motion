@@ -1,7 +1,7 @@
 // om render: the film as a video file, through the huashu-motion renderer (render-om.js). Output always
 // lands in <project>/out/ with a new name — a render never overwrites a file the user may already have shared.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { OmError, readSource, readVariables } from './project.js';
 import { FORMATS, renderOm } from './render-om.js';
@@ -14,7 +14,9 @@ export function nextOutput(project, ext) {
   const dir = join(project.root, 'out');
   mkdirSync(dir, { recursive: true });
   const base = project.root.split(sep).pop();
-  for (let v = 1; ; v++) {
+  // one past the highest version of any format: a deleted v1–v3 beside a kept v4 gives v5, never a new "v1"
+  const top = Math.max(0, ...readdirSync(dir).map((f) => (f.startsWith(`${base}-v`) ? parseInt(f.slice(base.length + 2), 10) || 0 : 0)));
+  for (let v = top + 1; ; v++) {
     const file = join(dir, `${base}-v${v}.${ext}`);
     try { writeFileSync(file, '', { flag: 'wx' }); return file; } catch (e) { if (e.code !== 'EEXIST') throw e; }
   }

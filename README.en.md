@@ -276,7 +276,7 @@ After the export, `om share` makes a share kit: a GIF under 10 MB (the opening p
 - **Director rules, not templates.** Measured from 21 real launch films (cuts, beats, loudness, energy curves) and 142 high-engagement launch and motion films, organised into 20 motion languages. Every film starts with a rhythm sheet: a hook within 3 s, a burst in the middle, a beat of silence before the biggest hit.
 - **Sound is half of it.** Composer mode (the agent writes the score, sampled instruments play it), 12 product types × 3 fallback music directions, 23 sound effects placed on the line where the motion lands, narration from a system voice or your own recording.
 - **Its own render engine.** Several Chrome instances at once (by CPU count, up to 8 by default), picture and audio encoded in parallel, unchanged music reused. A 30-second film renders in about 12–15 s on my 14-core Mac; with motion blur, about 1–1.5 min.
-- **Checked before delivery.** `om check` (scripts, files, motion rules, cut-off or covered text), `om qa` (single-frame pops, dead time, motion curve), and the skill asks the agent to watch the frames and, when it can, have another agent review cold.
+- **Checked before delivery.** `om check` (scripts, files, motion rules, cut-off or covered text), `om qa` (single-frame pops, dead time, motion curve; `--sheet` tiles the whole film into contact sheets), and the skill asks the agent to watch the frames and, when it can, have another agent review cold.
 
 | Command | What it does |
 |---|---|
