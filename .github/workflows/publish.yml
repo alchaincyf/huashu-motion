@@ -1,0 +1,37 @@
+# Publishes huashu-motion to npm when a version tag is pushed (v0.4.0, v0.4.1, …).
+# No token is stored anywhere: npm trusts this workflow in this repository (trusted publishing, OIDC).
+# A tag that already exists can be published by hand: Actions → Publish to npm → Run workflow → tag.
+name: Publish to npm
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (e.g. v0.4.0)'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: The tag and package.json must name the same version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          if [ "$v" != "$TAG" ]; then echo "package.json is $v, the tag is $TAG"; exit 1; fi
+      - run: npm install -g npm@latest
+      - run: npm publish --access public
