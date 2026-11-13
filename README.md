@@ -335,7 +335,7 @@ skill最大的一块是导演方法：先读产品、找出它的气质，再选
 |---|---|
 | `om grab` | 把产品的真实素材收进项目：网页截图、logo、配图、品牌色和字体，或本地工程里的截图、图标、录屏 |
 | `om new` · `om templates` | 新建项目，可以从12个模板起步 |
-| `om studio` | 编辑器：实时预览、场景条、直接改值、在画面上留评论 |
+| `om studio` | 编辑器：实时预览、场景条、直接改值、在画面上留评论。界面支持中文 / English / Español：跟随浏览器语言，或 `--lang es` / `OM_LANG=es` |
 | `om inbox --wait` · `om look` · `om done` | agent那一侧：接下一条评论、看你点的位置、回报改了什么 |
 | `om sound` · `om voice` · `om samples` | 配乐和音效、口播、真乐器采样包 |
 | `om check` · `om qa` · `om still` | 渲染前检查、成片检查、任意时刻截一帧 |

@@ -282,7 +282,7 @@ After the export, `om share` makes a share kit: a GIF under 10 MB (the opening p
 |---|---|
 | `om grab` | The product's real material into the project: page screenshots, logo, images, its colours and type, or the screenshots, icons and recordings in its own project folder |
 | `om new` · `om templates` | Start a project, from one of 12 templates |
-| `om studio` | Live preview, scene strip, direct edits, frame comments |
+| `om studio` | Live preview, scene strip, direct edits, frame comments. UI in 中文 / English / Español: follows the browser, or `--lang es` / `OM_LANG=es` |
 | `om inbox --wait` · `om look` · `om done` | Agent side: take the next comment, see the spot, report back |
 | `om sound` · `om voice` · `om samples` | Music and effects, narration, the instrument pack |
 | `om check` · `om qa` · `om still` | Before and after rendering |
