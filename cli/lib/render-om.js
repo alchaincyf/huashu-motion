@@ -264,7 +264,8 @@ export async function renderOm(project, { fps, out, format = 'mp4', transparent 
       onLog(`cpu      browsers ${rows.filter((r) => groups.has(r[0])).reduce((a, r) => a + sec(r[1]), 0).toFixed(1)}s`);
     }
     await Promise.all(films.map((f) => f.close({ fast: true })));
-    rmSync(tmp, { recursive: true, force: true });
+    // Windows: a browser can hold files in tmp for a moment after close(); retry, and never let cleanup hide the real result
+    try { rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 }); } catch (err) { onWarn(`could not remove ${tmp}: ${err.code || err.message}`); }
     forgetTmp();
   }
 }
