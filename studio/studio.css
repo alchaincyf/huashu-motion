@@ -30,6 +30,7 @@ kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 5p
 @keyframes pulse { 50% { opacity: .3; } }
 .ghost { padding: 6px 12px; border-radius: 6px; color: var(--ink-2); }
 .ghost:hover { background: var(--bg); color: var(--ink); }
+select.lang { appearance: none; -webkit-appearance: none; background: transparent; border: 0; font: inherit; cursor: pointer; }
 .primary { padding: 7px 14px; border-radius: 6px; background: var(--ink); color: #fff; font-weight: 500; }
 .primary:hover { background: #000; } .primary:disabled { opacity: .5; cursor: default; }
 .small { padding: 4px 10px; font-size: 12px; }
