@@ -162,7 +162,8 @@ export async function renderOm(project, { fps, out, format = 'mp4', transparent 
     const write = async (buf) => {
       if (enc.exitCode != null) throw new OmError(`ffmpeg stopped early: ${encErr.trim().split('\n').pop()}`);
       // an encoder that dies while the pipe is full never drains: wake on its exit too, then report it
-      if (!enc.stdin.write(buf)) await new Promise((ok) => { enc.stdin.once('drain', ok); enc.once('close', ok); });
+      // both listeners go once either fires: a long render waits here every frame and must not pile them up
+      if (!enc.stdin.write(buf)) await new Promise((ok) => { const done = () => { enc.stdin.off('drain', done); enc.off('close', done); ok(); }; enc.stdin.once('drain', done); enc.once('close', done); });
       if (enc.exitCode != null) throw new OmError(`ffmpeg stopped early: ${encErr.trim().split('\n').pop()}`);
     };
     // Work goes out in small runs of consecutive frames (chunk), dealt round-robin: a heavy scene is spread over all

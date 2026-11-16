@@ -1,7 +1,7 @@
 // om render: the film as a video file, through the huashu-motion renderer (render-om.js). Output always
 // lands in <project>/out/ with a new name — a render never overwrites a file the user may already have shared.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync, unlinkSync, writeFileSync, writeSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { OmError, readSource, readVariables } from './project.js';
 import { FORMATS, renderOm } from './render-om.js';
@@ -45,6 +45,14 @@ export async function render(project, { format, fps, out, transparent = false, b
   const switchVar = transparent && readVariables(html).some((v) => v.id === 'transparent' && v.type === 'boolean');
   const claimed = !out;
   const target = out || nextOutput(project, format);
+  // If the process ends while the render is still running (it is exited, or it runs out of work because something it
+  // waits for vanished without a word), the catch below never runs: drop the empty placeholder and never exit 0.
+  const unfinished = () => {
+    try { if (claimed && statSync(target).size === 0) unlinkSync(target); } catch { /* already gone */ }
+    if (!process.exitCode) process.exitCode = 1;
+    try { writeSync(2, `om: the render stopped before it finished — no file was written (${target})\n`); } catch { /* no stderr */ }
+  };
+  process.once('exit', unfinished);
   let r;
   try {
     r = await renderOm(project, { fps, out: target, format, transparent, blur, video, variables: switchVar ? { transparent: true } : null, ...(workers ? { workers } : {}), ...(frameFormat ? { frameFormat } : {}), ...tune, allowPageErrors, prepare, verify: transparent ? (file) => checkOverlay(file, switchVar, onWarn) : null, onLog, onNote, onWarn });
@@ -52,6 +60,8 @@ export async function render(project, { format, fps, out, transparent = false, b
     // the version we claimed stays free for the next try (only the empty placeholder is removed, never a film)
     if (claimed && existsSync(target) && statSync(target).size === 0) unlinkSync(target);
     throw e;
+  } finally {
+    process.off('exit', unfinished);
   }
   const { token } = readSource(project); // what was rendered: the source after the sound refresh
   onLog(`done     ${r.frames} frames in ${r.stats.renderSeconds.toFixed(1)}s (${(r.frames / r.stats.renderSeconds).toFixed(1)} fps), total ${r.stats.totalSeconds.toFixed(1)}s, workers ${r.stats.workers}, sound ${r.stats.audio}${r.stats.loudness?.lufs != null ? `, ${r.stats.loudness.lufs} LUFS` : ''}`);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -130,6 +130,30 @@ test('om render: a <video> without data-duration plays on (not frozen), and an u
   let d = 0; for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - b[i]);
   assert.ok(d / a.length > 5, `the footage moves between 0.2 s and 1.5 s (mean difference ${(d / a.length).toFixed(1)})`);
   assert.equal(hasAudio(out), true, 'the clip sound is in the film');
+});
+
+test('om render: a process that ends mid-render exits non-zero and leaves no empty file in out/', { skip }, () => {
+  const { dir } = makeFilm({ video: false, sound: false });
+  const lib = (f) => JSON.stringify(new URL(`../cli/lib/${f}`, import.meta.url).href);
+  // the process goes away at frame 5 with code 0, as it would if it simply ran out of work: the catch never runs
+  const code = `import { render } from ${lib('render.js')}; import { openProject } from ${lib('project.js')};
+    await render(openProject(${JSON.stringify(dir)}), { tune: { onFrame: (i) => { if (i === 5) process.exit(); } } });`;
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', env: process.env });
+  assert.equal(r.status, 1, r.stderr);
+  assert.match(r.stderr, /stopped before it finished/);
+  assert.deepEqual(readdirSync(join(dir, 'out')), [], 'the claimed placeholder is gone');
+});
+
+test('om render: a long render does not pile up listeners on the encoder', { skip }, async () => {
+  // a layer of noise makes every PNG frame far larger than the pipe buffer, so the encoder pushes back on every frame
+  const { project } = makeFilm({ video: false, sound: false, body: '<canvas id="nz" width="320" height="180" style="position:absolute;left:0;top:0"></canvas>',
+    script: 'const c = document.getElementById("nz").getContext("2d"), d = c.createImageData(320, 180); let s = 7; for (let i = 0; i < d.data.length; i++) d.data[i] = (s = (s * 1103515245 + 12345) & 0x7fffffff) >> 16 & 255; c.putImageData(d, 0, 0);' });
+  const warnings = [];
+  const onWarning = (w) => warnings.push(w);
+  process.on('warning', onWarning);
+  try { await render(project, { out: join(mkdtempSync(join(tmpdir(), 'om-out-')), 'long.mp4'), tune: { shotFormat: 'png' } }); } finally { process.off('warning', onWarning); }
+  await new Promise((ok) => setImmediate(ok)); // warnings are emitted on the next tick
+  assert.deepEqual(warnings.filter((w) => w.name === 'MaxListenersExceededWarning').map((w) => w.message), []);
 });
 
 test('nextOutput: one past the highest version there is, never a gap left by deleted renders', async () => {

@@ -5,7 +5,7 @@ metadata:
   author: "花叔"
   homepage: "https://github.com/alchaincyf"
   repository: "https://github.com/alchaincyf/huashu-motion"
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # huashu-motion
