@@ -1,0 +1,316 @@
+{
+  "version": 1,
+  "about": "The default music library of huashu-motion: instrumental tracks made by the repository author with AI music tools and released for any use (see LICENSE.md). `om music build` downloads them to ~/.cache/huashu-motion/music (OM_MUSIC overrides); a track's url is absolute or relative to base (OM_MUSIC_BASE overrides). The library is empty until the first tracks are published as release assets.",
+  "base": "https://github.com/alchaincyf/huashu-motion/releases/download/music-v1",
+  "license": "LICENSE.md",
+  "tracks": [
+    {
+      "id": "warm-luminance",
+      "name": "Warm Luminance",
+      "mood": [
+        "warm",
+        "lyrical",
+        "heartfelt"
+      ],
+      "bpm": 121,
+      "duration": 219.5,
+      "musicEnd": 212.91,
+      "ending": {
+        "type": "cadence",
+        "bars": 7,
+        "from": 198.85
+      },
+      "opening": {
+        "bars": 2,
+        "from": 0.5,
+        "to": 4.47
+      },
+      "lifts": 10,
+      "sha256": "a2e02babdbb7e6f95fd363a4d1ed52d366898b700d9b573b3c3db608ae2c9e3b",
+      "file": "warm-luminance.mp3",
+      "url": "warm-luminance.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "forward-motion",
+      "name": "Forward Motion",
+      "mood": [
+        "driving",
+        "confident",
+        "launch"
+      ],
+      "bpm": 120,
+      "duration": 208.2,
+      "musicEnd": 202.19,
+      "ending": {
+        "type": "fade",
+        "bars": 11,
+        "from": 180.37
+      },
+      "opening": {
+        "bars": 2,
+        "from": 0.37,
+        "to": 4.37
+      },
+      "lifts": 11,
+      "sha256": "391a8f21181850b131f773fb0db0c605b0c1a52a35a2d016b986a0d82a5db783",
+      "file": "forward-motion.mp3",
+      "url": "forward-motion.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "forward-drive",
+      "name": "Forward Drive",
+      "mood": [
+        "driving",
+        "energetic",
+        "fast-cut"
+      ],
+      "bpm": 120,
+      "duration": 182.3,
+      "musicEnd": 176.37,
+      "ending": {
+        "type": "hard stop",
+        "bars": 4,
+        "from": 168.24
+      },
+      "opening": {
+        "bars": 3,
+        "from": 0.24,
+        "to": 6.24
+      },
+      "lifts": 6,
+      "sha256": "c2f26734f18122e71b8e402cd1a211e0eaf57e3697da2b7010eed94edfc61846",
+      "file": "forward-drive.mp3",
+      "url": "forward-drive.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "calm-tech",
+      "name": "Calm Tech",
+      "mood": [
+        "calm",
+        "precise",
+        "tech"
+      ],
+      "bpm": 100,
+      "duration": 211,
+      "musicEnd": 205.38,
+      "ending": {
+        "type": "cadence",
+        "bars": 14,
+        "from": 173.1
+      },
+      "opening": {
+        "bars": 2,
+        "from": 0.3,
+        "to": 5.1
+      },
+      "lifts": 6,
+      "sha256": "da3e54cc5de0138e6e1be65ba90e9031d71bf13967f6871512b6d3ad9f184e69",
+      "file": "calm-tech.mp3",
+      "url": "calm-tech.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "bright-step",
+      "name": "Bright Step",
+      "mood": [
+        "bright",
+        "upbeat",
+        "friendly"
+      ],
+      "bpm": 118,
+      "duration": 226.6,
+      "musicEnd": 220.92,
+      "ending": {
+        "type": "ring-out",
+        "bars": 5,
+        "from": 210.72
+      },
+      "opening": {
+        "bars": 2,
+        "from": 1.23,
+        "to": 5.3
+      },
+      "lifts": 10,
+      "sha256": "df4bc54a18bbf71db224ff17520354205e10c43ca273802694458306fe25c3e6",
+      "file": "bright-step.mp3",
+      "url": "bright-step.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "grand-reveal",
+      "name": "Grand Reveal",
+      "mood": [
+        "epic",
+        "orchestral",
+        "launch"
+      ],
+      "bpm": 128,
+      "duration": 211.7,
+      "musicEnd": 206.15,
+      "ending": {
+        "type": "ring-out",
+        "bars": 7,
+        "from": 194.7
+      },
+      "opening": {
+        "bars": 4,
+        "from": 1.58,
+        "to": 9.08
+      },
+      "lifts": 9,
+      "sha256": "6e14d4b8775b0c1d5d729445f165fc5fd133b605936bced1ddfd99030a7b9b29",
+      "file": "grand-reveal.mp3",
+      "url": "grand-reveal.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "gentle-story",
+      "name": "Gentle Story",
+      "mood": [
+        "gentle",
+        "story",
+        "piano"
+      ],
+      "bpm": 84,
+      "duration": 177.7,
+      "musicEnd": 172.18,
+      "ending": {
+        "type": "ring-out",
+        "bars": 6,
+        "from": 155.02
+      },
+      "opening": {
+        "bars": 4,
+        "from": 0.74,
+        "to": 12.17
+      },
+      "lifts": 5,
+      "sha256": "c74dcb0cfd0837f54565f9c278443f921796b0285100fae627d102fbbae97aac",
+      "file": "gentle-story.mp3",
+      "url": "gentle-story.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "city-groove",
+      "name": "City Groove",
+      "mood": [
+        "groove",
+        "urban",
+        "funky"
+      ],
+      "bpm": 110,
+      "duration": 226.8,
+      "musicEnd": 221.15,
+      "ending": {
+        "type": "hard stop",
+        "bars": 5,
+        "from": 210.8
+      },
+      "opening": {
+        "bars": 3,
+        "from": 1.35,
+        "to": 7.89
+      },
+      "lifts": 13,
+      "sha256": "03ed0bfe616c342d48694f80b70a9c9f006dbd1ed866399e2dce18afc72dd381",
+      "file": "city-groove.mp3",
+      "url": "city-groove.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "focus-minimal",
+      "name": "Focus Minimal",
+      "mood": [
+        "minimal",
+        "focus",
+        "explainer"
+      ],
+      "bpm": 96.52,
+      "duration": 193,
+      "musicEnd": 186.67,
+      "ending": {
+        "type": "hard stop",
+        "bars": 5,
+        "from": 174.42
+      },
+      "opening": {
+        "bars": 3,
+        "from": 0.37,
+        "to": 7.83
+      },
+      "lifts": 6,
+      "sha256": "c07d88f5cbb75bce896ad18aa9a6ec68f74f8e9ab92ae195ea4bb87b8735cac0",
+      "file": "focus-minimal.mp3",
+      "url": "focus-minimal.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "playful-spark",
+      "name": "Playful Spark",
+      "mood": [
+        "playful",
+        "quirky",
+        "light"
+      ],
+      "bpm": 125,
+      "duration": 151.3,
+      "musicEnd": 146.23,
+      "ending": {
+        "type": "hard stop",
+        "bars": 6,
+        "from": 135.31
+      },
+      "opening": {
+        "bars": 3,
+        "from": 0.92,
+        "to": 6.68
+      },
+      "lifts": 9,
+      "sha256": "666970c21c0f2207f74686f3340f89248ddffa656b095da778234d16ee7f1c21",
+      "file": "playful-spark.mp3",
+      "url": "playful-spark.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    },
+    {
+      "id": "wide-horizon",
+      "name": "Wide Horizon",
+      "mood": [
+        "wide",
+        "hopeful",
+        "vision"
+      ],
+      "bpm": 92.55,
+      "duration": 209.7,
+      "musicEnd": 203.9,
+      "ending": {
+        "type": "cadence",
+        "bars": 11,
+        "from": 177.17
+      },
+      "opening": {
+        "bars": 2,
+        "from": 0.83,
+        "to": 6.01
+      },
+      "lifts": 9,
+      "sha256": "599a30f0d7f0227e3809f07ff8a5fa649a030af36b21659214cafe94f9437aef",
+      "file": "wide-horizon.mp3",
+      "url": "wide-horizon.mp3",
+      "license": "LICENSE.md",
+      "generated": "AI-generated"
+    }
+  ]
+}

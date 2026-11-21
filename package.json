@@ -1,11 +1,11 @@
 {
   "name": "huashu-motion",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Make motion graphics with your own coding agent — point at the frame to change it. Open, local, with sound.",
   "type": "module",
   "bin": { "om": "cli/om.js", "huashu-motion": "cli/om.js" },
   "engines": { "node": ">=22" },
-  "files": ["cli", "studio", "runtime", "templates", "fonts", "examples", "skills", "LICENSE", "THIRD_PARTY.md"],
+  "files": ["cli", "studio", "runtime", "templates", "fonts", "examples", "skills", "music", "LICENSE", "THIRD_PARTY.md"],
   "scripts": { "test": "node --import ./test/setup.mjs --test test/*.test.js" },
   "keywords": ["motion-graphics", "animation", "agent-skill", "claude-code", "codex", "video", "gsap", "launch-video"],
   "repository": { "type": "git", "url": "git+https://github.com/alchaincyf/huashu-motion.git" },

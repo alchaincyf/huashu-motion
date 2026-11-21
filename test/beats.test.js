@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { analyze, beatAt, decode } from '../cli/lib/beats.js';
+import { chordSong, song as fixtureSong } from './music-fixture.js';
 
 const RATE = 48000;
 // own noise source and 16-bit wav writer: this test must not depend on the sound module
@@ -106,6 +107,8 @@ test('analyze: a drifting tempo falls back to the tracker and still lands on the
   console.log(`  drift: bpm ${r.bpm} conf ${r.confidence} beats ${r.beats.length}/${kicks.length} mean dev ${(mean(dev) * 1000).toFixed(1)}ms max ${(Math.max(...dev) * 1000).toFixed(1)}ms`);
   assert.ok(r.beats.length >= kicks.length - 3 && r.beats.length <= kicks.length + 3);
   assert.ok(mean(dev) < 0.03, `mean deviation ${mean(dev)}`);
+  assert.equal(r.fit.method, 'tracked', 'a tempo that moves is not fitted with one line');
+  assert.deepEqual(r.alternatives, []);
 });
 
 test('analyze: a pad with no percussion has no pulse but still gets energy sections', () => {
@@ -149,4 +152,55 @@ test('decode: ffmpeg round-trips a synthesized wav', { skip: !hasFfmpeg && 'ffmp
   for (let i = 1000; i < 2000; i++) err = Math.max(err, Math.abs(d.L[i] - L[i]), Math.abs(d.R[i] - R[i]));
   assert.ok(err < 1e-3, `max sample error ${err}`);
   assert.throws(() => decode(join(dir, 'missing.wav')), /could not decode/);
+});
+
+// ---------- a steady tempo is fitted over the whole track; the count and the bar line are checked ----------
+
+const lattice = (ts, t0, step) => ts.map((t) => { const r = (((t - t0) % step) + step) % step; return Math.min(r, step - r); });
+
+test('analyze: a steady tempo that is not a whole number drifts less than 10 ms over two minutes', () => {
+  for (const bpm of [117.37, 120, 99.6]) {
+    const s = fixtureSong({ bpm, bars: Math.round(120 / (4 * 60 / bpm)) }), r = analyze(s);
+    const dev = lattice(r.beats, s.t0, s.beat);
+    console.log(`  ${bpm}: bpm ${r.bpm} residual ${r.fit.residualMs}ms drift ${r.fit.driftMs}ms beats ${r.beats.length} max dev ${(Math.max(...dev) * 1000).toFixed(1)}ms`);
+    assert.equal(r.fit.method, 'steady');
+    assert.ok(Math.abs(r.bpm - bpm) < 0.02, `bpm ${r.bpm}`);
+    assert.ok(Math.max(...dev) < 0.01, `worst beat ${Math.max(...dev) * 1000} ms off its lattice`);
+    assert.ok(r.fit.residualMs < 10 && r.fit.driftMs < 10);
+    assert.ok(r.beats.at(-1) - r.beats[0] > 110, 'the grid runs the whole track');
+  }
+});
+
+test('analyze: a dotted-eighth layer that makes the pulse look 4:3 too fast is counted back to the beat, with the other count listed', () => {
+  const s = chordSong({ bpm: 92, echo: true, echoGain: 0.35, padGain: 0.4 }), r = analyze(s);
+  console.log(`  echo: bpm ${r.bpm} from ${r.fit.switchedFrom} conf ${r.confidence} alts ${r.alternatives.map((a) => `${a.ratio} ${a.bpm} ${a.score}`).join(', ')}`);
+  assert.ok(Math.abs(r.bpm - 92) < 0.1, `bpm ${r.bpm}`);
+  assert.ok(Math.abs(r.fit.switchedFrom - 122.67) < 0.2, `first estimate ${r.fit.switchedFrom}`);
+  const back = r.alternatives.find((a) => a.ratio === '4:3');
+  assert.ok(back && Math.abs(back.bpm - 122.67) < 0.2 && back.score < 1);
+  assert.ok(Math.max(...lattice(r.beats, s.t0, s.beat)) < 0.012);
+});
+
+test('analyze: a harder dotted-eighth case (echo as loud as the beat, no hats) is resolved by the chord periods; a given tempo is fitted, phase included', () => {
+  // before the chord periods counted, this fixture kept 122.67 with a lowered confidence; the progression repeats every 4 bars of
+  // 92 bpm, which are not a whole number of half bars at 122.67, so the right count now wins outright
+  const s = chordSong({ bpm: 92, echo: true, echoGain: 0.5, hats: false, padGain: 0.5 }), r = analyze(s);
+  assert.ok(Math.abs(r.bpm - 92) < 0.2, `bpm ${r.bpm}`);
+  assert.ok(r.fit.switchedFrom > 120, 'counted back from the dotted-eighth pulse');
+  const wrong = r.alternatives.find((a) => a.ratio === '4:3');
+  assert.ok(!wrong || wrong.score < 0.5, JSON.stringify(wrong));
+  const g = analyze(s, { bpm: 92.4 }); // roughly right is enough: the period is refitted within 1 %, the phase freely
+  assert.ok(Math.abs(g.bpm - 92) < 0.15 && g.fit.forcedBpm === 92.4, `bpm ${g.bpm}`);
+  assert.ok(Math.max(...lattice(g.beats, s.t0, s.beat)) < 0.012);
+  assert.ok(Math.max(...lattice(g.downbeats, s.t0, s.bar)) < 0.012, 'bar lines on the chord changes');
+});
+
+test('analyze: the bar line is where the chords change, even when the kick is strongest on beat 2', () => {
+  const s = chordSong({ bpm: 100, accent: 1 }), r = analyze(s);
+  assert.equal(r.bars.basis, 'chords');
+  assert.equal(r.bars.accentPhase, 1, 'the drums alone would put the bar line on the second beat');
+  assert.ok(Math.max(...lattice(r.downbeats, s.t0, s.bar)) < 0.012, 'bar lines at the chord changes');
+  assert.ok(r.downbeats.length >= 38);
+  const plain = chordSong({ bpm: 100, accent: 0 }), p = analyze(plain);
+  assert.ok(Math.max(...lattice(p.downbeats, plain.t0, plain.bar)) < 0.012);
 });

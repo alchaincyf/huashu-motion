@@ -13,6 +13,7 @@ import zlib from 'node:zlib';
 import { openFilm } from './capture.js';
 import { isHdr, probeVideo } from './frames.js';
 import { OmError, readSource, readVariables } from './project.js';
+import { CUT_TOLERANCE, cutAlignment } from './track.js';
 
 const GENERIC = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace', 'ui-rounded', '-apple-system', 'blinkmacsystemfont', 'emoji', 'math', 'fangsong', 'inherit', 'initial', 'unset', 'revert', 'none']);
 
@@ -227,6 +228,21 @@ export async function checkPage(project, { samples = 24, fps = 30, onLog = () =>
       return { root: r && parseFloat(r.getAttribute('data-duration')) || null, tl: tls.reduce((m, t) => Math.max(m, t.duration()), 0), sound: a ? parseFloat(a.getAttribute('data-duration')) : null }; })()`);
     if (book.root && book.tl > book.root + 0.05) add('warning', 'cut-off', `the timeline runs ${book.tl.toFixed(2)}s but the root says data-duration="${book.root}" — the end is cut off`);
     if (book.sound != null && Math.abs(book.sound - dur) > 0.1) add('warning', 'stale-sound', `the soundtrack is ${book.sound.toFixed(2)}s, the film ${dur.toFixed(2)}s — run om sound`);
+    // external music: its file is there, its beat map is current, and the scene cuts sit on its beats
+    const mus = await film.evaluate(`(() => { const o = window.__om || {}, m = o.sound ? o.sound().music : null; return { src: m && m.src || null, map: o.beatData ? o.beatData() : null }; })()`);
+    if (mus.src) {
+      if (!existsSync(resolve(project.root, mus.src))) add('error', 'music-missing', `OM.music({ src: '${mus.src}' }): no such file — put the track in assets/music/ (om sound --music <file> does it)`);
+      else if (!mus.map || mus.map.src !== mus.src) add('warning', 'music-beats', `OM.music({ src: '${mus.src}' }) has no beat map in index.html yet — run om sound, then OM.beat / OM.downbeat / OM.drop follow the track`);
+      else {
+        const cuts = Object.entries(info.labels || {}).filter(([k]) => k.startsWith('scene:')).map(([name, t]) => ({ name, t }));
+        const al = cutAlignment(cuts, { ...mus.map, duration: dur });
+        if (al === null) add('warning', 'music-pulse', `the track has no clear pulse (confidence ${mus.map.confidence}) — scene cuts cannot be put on its beat; trust its sections (OM.section(i)), not its beats`);
+        else {
+          const off = al.filter((c) => !c.ok);
+          if (off.length) add('warning', 'cut-off-beat', `${off.length} of ${al.length} scene cuts sit more than ${Math.round(CUT_TOLERANCE * 1000)} ms from the nearest beat of the track: ${off.slice(0, 6).map((c) => `${c.name} ${c.t.toFixed(2)}s (${c.off > 0 ? '+' : ''}${c.off} ms)`).join(', ')}${off.length > 6 ? ', …' : ''} — place them on OM.beat(n) / OM.downbeat(n)`, off[0].t);
+        }
+      }
+    }
     for (const [k, v] of Object.entries(info.labels || {})) if (k.startsWith('scene:') && v >= dur) add('warning', 'scene-after-end', `${k} starts at ${v.toFixed(2)}s, at or after the end (${dur.toFixed(2)}s)`);
     // footage the renderer cannot use
     for (const m of await film.media()) {

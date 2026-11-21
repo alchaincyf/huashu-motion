@@ -87,6 +87,7 @@ test('om sound reads hits and scenes from a real composition', { skip: !findChro
   const out = await sound(openProject(dir));
   assert.match(out, /bright · G major · 120 BPM · 2 sections/);
   assert.match(out, /2 hits: pop×1, thud×1/);
+  assert.match(out, /hint     the music is synthesized .*`om music`/); // no track, no score: the fallback says so
   const html = readFileSync(join(dir, 'index.html'), 'utf8');
   assert.match(html, /<audio id="om-sound" src="assets\/sound.wav"/);
   const w = readWav(join(dir, 'assets', 'sound.wav'));

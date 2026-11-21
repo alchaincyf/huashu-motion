@@ -97,6 +97,8 @@
   //                                                    // or write the score: <script type="text/vnd.abc" id="om-score">
   //   tl.to('.card', {...}, OM.sfx('thud', 5.6))      // returns the time, so motion and sound share one line
   //   tl.addLabel('scene:chart', OM.beat(16))         // 16 beats in: scene cuts on the music's grid
+  //   OM.music({ src: 'assets/music/track.mp3' })     // a real track instead of the synthesized one (om sound --music <file>);
+  //                                                    // OM.beat / OM.downbeat / OM.drop then follow its real beats
   // Nothing plays in the browser; re-run `om sound` (or `om render`, which does it) after timing changes.
   const hits = [];
   let music = {};
@@ -107,11 +109,56 @@
     return t;
   };
   OM.music = function (opts) { music = { ...music, ...(opts || {}) }; return OM; };
+  // The track's own beats. With an external track (OM.music({ src })) `om sound` analyses the file and writes its beat
+  // map into <script type="application/json" id="om-beats">, in film time (offset by `start`, unrolled over loops), so
+  // everything below is still a pure function of the file and the declaration. Without it: the fixed tempo.
+  //   OM.beat(n)      beat n of the track (fractions interpolate)       tl.addLabel('scene:b', OM.beat(16))
+  //   OM.downbeat(n)  bar n's first beat (bar 0 is the first full bar the music shows)
+  //   OM.drop(i)      the i-th biggest jump in energy, on a downbeat    tl.addLabel('scene:hero', OM.drop(0))
+  //   OM.section(i)   start of the track's i-th loudness section
+  // Before `om sound` has read the track these answer with a plain grid, and are exact after it.
+  let beatMap;
+  const beatData = () => {
+    if (beatMap === undefined) {
+      const node = document.getElementById('om-beats');
+      if (!node) return null;
+      try { beatMap = JSON.parse(node.textContent); } catch (e) { beatMap = null; }
+    }
+    return beatMap;
+  };
+  const beatAt = (beats, n) => {
+    const last = beats.length - 1;
+    if (n <= 0) return beats[0] + n * (beats[1] - beats[0]);
+    if (n >= last) return beats[last] + (n - last) * (beats[last] - beats[last - 1]);
+    const i = Math.floor(n);
+    return beats[i] + (n - i) * (beats[i + 1] - beats[i]);
+  };
+  const clean = (d) => d && d.usable && d.beats && d.beats.length > 1 ? d : null;
   OM.beat = function (n, bpm) {
-    const b = Number(bpm || music.bpm);
+    const d = bpm == null ? clean(beatData()) : null;
+    if (d) return beatAt(d.beats, Number(n));
+    // a declared track whose beats `om sound` has not read yet counts at 120 until it has (the map replaces this at once)
+    const b = Number(bpm || music.bpm || (beatData() || {}).bpm || (music.src ? 120 : 0));
     if (!(b > 0)) throw new Error('huashu-motion: OM.beat needs a bpm — call OM.music({ bpm }) first');
     return (Number(n) * 60) / b;
   };
+  OM.downbeat = function (n) {
+    const d = clean(beatData());
+    return d && d.downbeats && d.downbeats.length > 1 ? beatAt(d.downbeats, Number(n)) : OM.beat(4 * Number(n));
+  };
+  OM.drop = function (i) {
+    const d = beatData(), k = Number(i) || 0;
+    if (!d) return 8 * (k + 1);
+    if (!d.drops || !d.drops[k]) throw new Error(`huashu-motion: the track has no drop #${k} (${(d.drops || []).length} found) — om beats <file> lists them; OM.downbeat(n) or OM.section(i) pick a place by bar`);
+    return d.drops[k].t;
+  };
+  OM.section = function (i) {
+    const d = beatData(), k = Number(i) || 0;
+    if (!d) return 8 * k;
+    if (!d.sections || !d.sections[k]) throw new Error(`huashu-motion: the track has no section #${k} (${(d.sections || []).length} found)`);
+    return d.sections[k].start;
+  };
+  window.__om.beatData = () => { const d = beatData(); return d ? JSON.parse(JSON.stringify(d)) : null; };
   window.__om.sound = () => ({ hits: hits.slice(), music: { ...music } });
 
   // Springs as closed-form step responses: a pure function of time, so any frame renders alone and

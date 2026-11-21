@@ -129,6 +129,8 @@ marks on the same bars: `om sound` then reports 0 % bend and every cut is on a b
 film that is already cut, the music bends to the picture instead, so a montage inside it should be
 retimed after `om sound` reports the fitted tempo of its stretch.
 
+With a real track, the sheet starts from it: run `om beats <track> --plot`, write the track's bar lines, sections and drops into the sheet (bar numbers from `OM.downbeat`, the hero on `OM.drop(0)` or a section start) and place the scenes on them; `om check` lists cuts more than 80 ms off a beat. A track with confidence under 0.3 has no pulse to cut to: use its sections.
+
 ## 6. Music that has rhythm
 
 The music's energy curve is the picture's energy curve. With a score written for the film

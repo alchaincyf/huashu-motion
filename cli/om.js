@@ -38,6 +38,12 @@ const HELP = `huashu-motion ${VERSION} — motion graphics made by your coding a
   om fork <dir> <newdir> --size 1080x1920   copy into a new frame size; the re-layout lands in the inbox
   om voice <dir> --text <file|"文本"> | --audio <file> [--voice say:Tingting|zf_xiaobei] [--fit]   narration, word cues, .srt
   om sound [dir] [--list] [--off]   music + sound effects from the scenes, OM.sfx hits and an om-score (om render refreshes it)
+  om sound [dir] --music <file> [--start sec] [--bpm n] [--arrange off|auto] [--stretch bpm]   a real track as the music: copied into assets/music/, declared as OM.music({ src }), its beats read for OM.beat / OM.downbeat / OM.drop
+  om music [--list]             the tracks on this machine (default library + your own): mood, bpm, length
+  om music build [ids…]         download the default library to ~/.cache/huashu-motion/music (sha256 checked; OM_MUSIC overrides)
+  om music use <id> <dir>       copy a track into a project and declare it (then om sound)
+  om music add <file> --mood warm,calm --name "…"   register a track of your own (beats analysed once)
+  om beats <file|dir> [--plot [out.png]] [--at sec] [--bars]   bpm, confidence, bar lines, the section map (energy, can-end bars) of a track; --plot draws them; --bars lists every bar
   om still <page.html|dir> [--at 0,2.5] [--out file]   a PNG of any page (direction key frames, treatment stills)
   om swatch [directions.md] [--out file]   the Palette: lines of the direction cards as one PNG, with contrast and house-look checks
   om learn [topics…]            before a film: this user's preferences + past experience on those topics
@@ -301,6 +307,15 @@ async function main() {
     case 'sound': {
       const { sound } = await import('./lib/sound.js');
       return out(await sound(flags.list ? null : openProject(pos[0] || '.'), flags, (l) => process.stderr.write(l + '\n')));
+    }
+    case 'beats': {
+      if (!pos[0]) throw new OmError('usage: om beats <file|dir> [--plot [out.png]] [--at sec] [--json]');
+      const { beats } = await import('./lib/beats-report.js');
+      return out(await beats(pos[0], flags));
+    }
+    case 'music': {
+      const { music } = await import('./lib/music.js');
+      return out(await music(pos, flags, (l) => process.stderr.write(l + '\n')));
     }
     case 'still': {
       const { still } = await import('./lib/still.js');

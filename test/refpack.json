@@ -1,0 +1,105 @@
+{
+ "note": "Reference answers for the ten generated tracks in _music-pack-draft (beat_this 1.1.0 + madmom 0.17 on human-annotated data, plus chord-period statistics). Numbers only; the audio is not in the repository.",
+ "tracks": {
+  "01": {
+   "file": "warm-luminance",
+   "bpm": 121,
+   "bar": 1.983,
+   "refBarLines": [
+    58.04,
+    60.02,
+    62.0
+   ]
+  },
+  "02": {
+   "file": "forward-motion",
+   "bpm": 120,
+   "bar": 2.0,
+   "refBarLines": [
+    62.4,
+    64.38,
+    66.4
+   ]
+  },
+  "03": {
+   "file": "calm-tech",
+   "bpm": 100,
+   "bar": 2.4,
+   "refBarLines": [
+    60.26,
+    62.64,
+    65.04
+   ]
+  },
+  "04": {
+   "file": "bright-step",
+   "bpm": 117.68,
+   "bar": 2.039,
+   "refBarLines": [
+    58.48,
+    60.52,
+    62.56
+   ]
+  },
+  "05": {
+   "file": "grand-reveal",
+   "bpm": 128,
+   "bar": 1.875,
+   "refBarLines": [
+    59.7,
+    61.6,
+    63.46
+   ]
+  },
+  "06": {
+   "file": "gentle-story",
+   "bpm": 84.5,
+   "bar": 2.84,
+   "refBarLines": [
+    59.98,
+    62.8,
+    65.64
+   ]
+  },
+  "07": {
+   "file": "city-groove",
+   "bpm": 110,
+   "bar": 2.182,
+   "refBarLines": [
+    58.08,
+    60.26,
+    62.44
+   ]
+  },
+  "08": {
+   "file": "focus-minimal",
+   "bpm": 95.9,
+   "bar": 2.503,
+   "refBarLines": [
+    60.3,
+    62.78,
+    65.3
+   ]
+  },
+  "09": {
+   "file": "playful-spark",
+   "bpm": 124,
+   "bar": 1.935,
+   "refBarLines": [
+    59.04,
+    60.96,
+    62.9
+   ]
+  },
+  "10": {
+   "file": "wide-horizon",
+   "bpm": 92.5,
+   "bar": 2.595,
+   "refBarLines": [
+    60.48,
+    63.08,
+    65.68
+   ]
+  }
+ }
+}

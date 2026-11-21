@@ -2,16 +2,78 @@
 
 A film ships with music and sound effects. Silent motion reads as a draft: the same cut that feels abrupt without sound feels intended when a note starts on it, and a card that lands without a thud looks weightless. Leave a film silent only when it is an overlay for someone else's edit (`om render --transparent`) or the user asks for it (`om sound --off`).
 
+**Real track first.** Synthesized music is the weakest part of this tool: it sounds synthetic, and a film with effects but no music is worse. A film given to the user carries a real track; the source order is in [music-sources.md](music-sources.md) (the user's own, a tool in the environment, `om music`, an open library, and only then the synthesis below, said so at delivery). Everything below about scores and built-in directions is that last-resort fallback.
+
+## A real track
+
+```sh
+om beats track.mp3 --plot            # bpm, confidence, bar lines, sections, drops + a picture to check them against the waveform
+om sound film --music track.mp3      # copies it to assets/music/, writes OM.music({ src }) in index.html, mixes the film
+om music use <id> film               # the same, from the library (om music lists it)
+```
+
+```js
+OM.music({ src: 'assets/music/track.mp3', start: 12.5, bpm: 124, sfx: -8 });  // start: where in the file the film begins (s); bpm: only when you know it better than the tracker; sfx: dB offset for effects
+tl.addLabel('scene:hero', OM.drop(0));        // the track's biggest jump in energy, on a bar line
+tl.addLabel('scene:next', OM.downbeat(8));    // bar 8 (0 = the first bar line in the film); OM.beat(n) is beat n; OM.section(i) the i-th loudness section
+```
+
+- `om sound` analyses the file once (cached in `.om/music`), writes the beat map into `<script id="om-beats">` (and `assets/music.beats.json` to read), and re-reads the timeline until the labels agree with it. `OM.beat(n)` then follows the track's real beats; without a track it is still the fixed bpm. Everything stays a pure function of the file and the declaration.
+- **Pick the track, then cut.** The beat map is the grid; put scene labels and the hero moment on `OM.downbeat` / `OM.drop`. `om sound` and `om check` list every scene cut more than 80 ms from the nearest beat.
+- **The count, the fit and the bar line.** The tempo is fitted over the whole track (a steady 120 comes out as 120.00 with every beat within a few ms, not 119.8 drifting a beat's worth by the end); `om beats` prints the residual. A generated track whose tempo moves is tracked beat by beat instead (`fit: tracked`). A layer can make the pulse look 4:3 or 3:2 too fast or slow: `om beats` lists the other counts with how well each fits (× 1 = as well) and warns when one fits about as well. Listen once and set the one you hear: `om beats <file> --bpm 92` or `OM.music({ bpm })` (the period is refitted within 1 %, the phase freely). Bar lines are where the chords change, confirmed by the drum accent (a kick strongest on beat 2 does not move the bar).
+- **Cut-vs-beat check.** `om sound` and `om check` compare each scene cut with the nearest **beat** (any beat of the bar, not only the bar line), because a cut on beat 3 is as musical as one on beat 1; a cut more than 80 ms from every beat is listed with its offset. To land the big moments on bar lines, use `OM.downbeat` / `OM.drop`.
+- **Confidence below 0.3 means no clear pulse** (ambient, rubato): the beats are a guess. Use `OM.section(i)` and `OM.drop(i)`, not beats; do not promise a cut "on the beat".
+- **Levels and ends.** The track sits at the music target (−18 LUFS alone, ~12 LU under narration, ducked under words), master −14. It is trimmed to the film from `start`, a track shorter than the film loops on bar lines with crossfades (a quiet outro is left out of the loop), and the music fades out starting on the last bar line that leaves 1–1.5 s (`OM.music({ fade })` to set it).
+- **Effects over a track are guests.** They are 8 dB lighter than over the synthesized bed (`sfx` changes it), and **at most one effect per cut**: a thud on the cut, nothing stacked, no riser under a track that has its own build. Silence in the effects is fine.
+- Check what you cannot hear: `om beats <file> --plot` (a beat line should sit on the start of a kick; the zoom panel shows ten seconds), the `cuts` and `energy` lines of `om sound`, and say which you could not judge by ear.
+
 `om sound` renders everything from what the composition declares — no network, no API — so a retimed film re-renders its own soundtrack (`om render` does it before every export). Instruments are synthesized, or played from real recordings once the sample pack is installed (`om samples build`, once per machine: a concert grand, string sections, horns, harp, mallets, guitars, a recorded drum kit; CC0 and CC-BY, credits in its NOTICE.txt). Run `om samples` to see whether it is there; without it everything still works, on synths.
 
 **Pick the world first** ([music.md](music.md)): sixteen musical worlds — pulse minimalism, UK garage, minimal techno, drum and bass, funk, lo-fi, trap, synthwave, cinematic, lyrical piano, jazz trio, folk, chiptune, ambient, 国风, amapiano — each with the products it suits and a two-bar groove that renders. You choose it from the product's character after the direction is chosen; the user isn't asked unless they want a say. `om sound` prints the score's soundprint (tempo, key, band) and warns when it is one of the example scores' bands or a recent film's on this machine: every film sounding alike is the failure users notice first.
 
-There are two ways to score a film:
+There are two ways to score a film without a track:
 
 - **A built-in direction** — `OM.music({ product: 'devtool' })` picks one of three directions for the product category and composes it around your scenes, drop and ending. Fast and decent: drafts, quick stings, anything where music is not the point.
 - **Composer mode** — you write the score (an `om-score` in ABC notation) and `om sound` performs it on the instruments, fitted to the picture. For launch films and anything the user will judge by how it feels. The music can only be as good as the composition, and the composition is yours.
 
 Read [rhythm.md](rhythm.md) first either way: the music's energy curve is the film's energy curve.
+
+### Fitting a fixed track to this film
+
+A track has a shape of its own: a quiet start, a lift, a breakdown, a main section, an ending. The film has another. Three layers of fit, each cheaper and weaker than the next:
+
+1. **Choose the track for the film.** Tempo family and mood come from the film, not from a later edit; nothing below can turn a calm track into an urgent one.
+2. **Cuts follow the beats.** `OM.beat(n)` / `OM.downbeat(n)` / `OM.drop(i)` put scene cuts on the track's real grid (above). Fixes the rhythm; does nothing for the energy contour.
+3. **Arrange by length** (`arrange`, default on when the film has scenes): the way a music editor fits a track to a running time. Three parts: the track's **own opening** (its first bars, untouched), an **elastic middle** (whole bars or phrases dropped or repeated until the length fits), and the track's **own ending** (a real closing stretch of the track, played continuously to the end of the music; no fade). The film's last frame sits on the music's end. This is the arrangement the author approved on the HuaStudio film: the real tail of the track, not a made-up one.
+
+- **The ending, in this order of preference.** (1) The track's real ending, of variable length: the last k bars, k from two bars to the whole closing stretch, whichever joins best and puts the strongest hit of the tail where the end card lands (`landing`); a long closing stretch is shortened, not given up. (2) A **button** only when the track's own ending is a hard cut or none can be reached: a strong home-chord hit with a reverb tail. The tail is **synthetic** (made, not found in the track), it is labelled so, and it scores below a real ending. (3) A fade, last.
+- **Joins** go only inside stable stretches of the track, never across a lift: a lift, the fill bar before it and the bar after it always play as the track has them. A join sits on a bar line or on a **beat** (the fourth beat of one bar into the fourth beat of another: both sides at the same place of the same progression). Both sides must be the same segment or energy grade, harmony within reach (score 0.55 and up) and loudness within 3 dB over one second; a step of up to 5 dB is allowed when up to 2 dB of **static gain** on what follows levels it (printed with the join). Every candidate is then rendered and measured: one with a loudness jump of more than 6 dB inside half a second that the track does not make itself (the first half second of a bar can decay faster than the 1 s windows the plan was made with show) is **refused**, and the next candidate is tried; if all are refused the track is cut straight and the table says so.
+- **A lift on the burst and the peak.** For each of the film's `burst` and `peak` the plan looks through all the lifts of the track for one that can land on it: a join into a stable bar (at the start of the stretch that leads into the lift's fill bar, or earlier), then the track plays straight, so the fill bar, the lift and the bar after it are heard as the track has them. A real lift on the burst or the peak is worth as much to the score as the track's own ending, more for a bigger step and a clearer fill; the join that makes it possible is not counted as a repair. The table says whether a lift lands on the event, or a bar before it (the event is then the lift's second bar; the hint says where to move the event to put the hit on it). Harmony, loudness and the 2 dB static gain rules apply to that join as to any other.
+- **The film yields.** Beside the plan for the film as written, `om sound` prints a second one for a film that moves its burst, peak or landing by up to a bar and its length by up to 4 s, with both scores, and says what the move buys (fewer joins, the track's own ending instead of a button or a fade, a lift on the burst or the peak). A longer film is never recommended for a longer tail alone. Look at it when you fix the rhythm sheet and move the picture to the music when it is cheap: the author's approved cut moved the burst 12→14, the peak 24→26, the end card 30→34 and the length 34→38 s.
+- **Micro stretch** `stretch: 'fit'`: up to 3 % so the track's own end lands on the last frame. Off unless written.
+- `om sound` lists film lengths at which the track needs one join or none (opening N bars + its ending) when one is within a bar of yours.
+
+```js
+OM.music({ src: 'assets/music/x.mp3',
+  burst: 'drop',          // a scene name or seconds: where the music should lift (a real lift of the track is placed here when it can be)
+  peak: 24,               // the full-power moment
+  landing: 34,            // where the end card lands: the ending's strongest hit is put here when the length allows
+  stop: [11, 12],         // optional, only when written: a clean dip on whole beats
+  energy: { hero: 0.3 },  // optional, per scene, 0–1
+  arrange: 'auto',        // 'off' = a straight cut from `start` (also the default when `start` is written)
+  stretch: 'fit' })       // optional: up to 3 % so the ending lands on the last frame
+```
+
+Joins are 40 ms equal-power crossfades. Each is scored 0–1 for harmony and measured on the rendered audio (loudness over 1 s each side); the table prints both, the ending's kind and length, and the film time of both the strongest accent in its tail and its final chord, so the end card can land on either. A burst or peak that falls between the music's bar lines is reported with where to move it. The film's grid and the track's are never forced together, and the track's own lifts are not moved to fit.
+
+Things to know:
+
+- A scene placed with `OM.beat` / `OM.drop` moves with the music, so give `burst` and `peak` as seconds or as scenes placed by seconds; `om sound` warns when the cuts keep moving the film length.
+- A flat track (bars within 4 dB, `om beats` says "flat") has no quiet section to build a contour from: its opening, length and ending are still arranged, the film's energy shape is not followed, and `om sound` says so. Most of the default pack's endings are fades or cut short: prefer a track whose `om beats` ending is a cadence, or accept a button ending.
+- Whatever follows the music's end is never played: tracks that carry a short extra piece after a silence at the very end (`om beats` prints a `tail` line) end where the music ends, and loops, the closing fade and the re-cut all stop there.
+- Chord names and the home chord come from a pitch-class estimate of a dense mix: treat join scores and the ending as a guide. Listen to every join once (the table says where); an unsmooth one is the first thing a viewer hears.
+
+What cannot be done: the mood does not change; a join can still be audible (bass line or melody breaks, a different reverb tail); a track's closing stretch may be a fade or a cut; the arrangement still takes its real last bars where it can, and a button (made, not found) is the exception; a very short film (under two bars) or a track with no pulse gets no re-cut. The default library's tracks are shared by everyone, so another film may use the same bars: choose a different stretch, or use your own track, when it must be distinct.
 
 ## Composer mode
 

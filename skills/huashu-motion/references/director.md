@@ -141,7 +141,7 @@ Feel:            <route (continuous / montage / hybrid), BPM, events per bar, wh
 Risk:            <what could make it fail, e.g. "needs real UI screenshots">
 ```
 
-Music is not on the cards. Most users can't judge a music world from a name, and asking them to is a decision they don't want: once a direction is chosen, you choose the music from the product's character ([music.md](music.md)) and write it into the treatment. Offer music options only when the user asks for a say in it; when they name a style or a track, use theirs.
+Music is not on the cards. Most users can't judge a music world from a name, and asking them to is a decision they don't want: once a direction is chosen, you find a real track ([music-sources.md](music-sources.md): the user's own, a tool in the environment, `om music`, an open library) and write it into the treatment (track, source, licence, bpm and confidence from `om beats`). The synthesized worlds in [music.md](music.md) are the fallback. Offer music options only when the user asks for a say in it; when they name a style or a track, use theirs.
 
 Take the colours from the product before drawing anything; the three use the brand's palette
 differently rather than inventing new ones ([colour.md](colour.md)); `om swatch directions.md` renders the three palettes side by side and
@@ -222,7 +222,7 @@ the account. Defaults, not laws: break one when the direction calls for it and s
    one wins depends on the product and the brief. When depth is chosen, the camera carries the whole
    film in space, not just its opening. [depth.md](depth.md)
 5. **Craft shows at rest.** Every hold is a poster: type set properly, one accent, no default fonts.
-6. **Sound.** Long films and films with people are sound-led; short UI films and loops must read
+6. **Sound.** No film goes to the user without music: a real track, chosen before the cuts so the rhythm sheet starts from its bar lines and drops (`om beats`). Long films and films with people are sound-led; short UI films and loops must read
    with the sound off (a silent, self-explaining loop was among the most saved films). Each landing
    gets a hit. Social masters at −14 LUFS, see [sound.md](sound.md).
 7. **End right.** A launch ends on the mark (a URL pill is optional; several top launches had none).

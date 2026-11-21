@@ -6,8 +6,11 @@
 // the effects in the style's kit, automates and mixes the buses and writes the master.
 import { soundprintReport } from './soundprint.js';
 import { createHash } from 'node:crypto';
+import { decode } from './beats.js';
+import { arrangeLines, measureArrangement } from './arrange.js';
+import { applyBeats, attachMusic, beatsTag, cutAlignment, loadExternal, readBeatsTag, readMusicDecl, renderTrack } from './track.js';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findChrome } from './browser.js';
 import { openFilm } from './capture.js';
@@ -374,7 +377,7 @@ export function applySound(html, { src, duration, off = false }) {
 // Projects made with an older runtime (before OM.sfx, or before OM.vars typed its values) get vendor/om.js (and the clip engine)
 // refreshed from this package when they lack the marker. The old copies go to .om/vendor-backup.
 export function refreshRuntime(project, log) {
-  const pairs = [['runtime/om.js', 'vendor/om.js', 'arrive typed as declared'], ['runtime/clip/clip.js', 'vendor/clip/clip.js', 'C.SFX']];
+  const pairs = [['runtime/om.js', 'vendor/om.js', 'om-beats'], ['runtime/clip/clip.js', 'vendor/clip/clip.js', 'C.SFX']];
   for (const [from, to, marker] of pairs) {
     const target = join(project.root, to);
     if (!existsSync(target) || readFileSync(target, 'utf8').includes(marker)) continue;
@@ -388,12 +391,29 @@ export function refreshRuntime(project, log) {
 
 // ---------- the command ----------
 
+// The lines `om sound` prints about a real track: its map, where the cuts sit against it, what to do about a weak pulse.
+function externalLines(ext, p0, score) {
+  const d = ext.data, lines = [];
+  lines.push(`beats    ${d.beats.length} beats · ${d.downbeats.length} bars${d.downbeats.length ? ` · first bar line ${d.downbeats[0].toFixed(2)}s` : ''}${d.drops.length ? ` · drops ${d.drops.slice(0, 3).map((x) => `${x.t.toFixed(1)}s`).join(', ')}` : ''}  → assets/music.beats.json, read by OM.beat / OM.downbeat / OM.drop`);
+  if (!d.usable) lines.push(`warning  confidence ${d.confidence.toFixed(2)} < 0.3: no clear pulse — trust the sections (OM.section(i)), not the beats; cuts cannot be placed on this track's beat`);
+  else {
+    const cuts = Object.entries(p0.labels || {}).filter(([k]) => k.startsWith('scene:')).map(([k, t]) => ({ name: k, t: Number(t) }));
+    const al = cutAlignment(cuts, d) || [], off = al.filter((c) => !c.ok);
+    if (al.length) lines.push(`cuts     ${al.length - off.length} of ${al.length} scene cuts within 80 ms of a beat${off.length ? '' : ' — the picture follows the music'}`);
+    for (const c of off.slice(0, 5)) lines.push(`warning  ${c.name} at ${c.t.toFixed(2)}s is ${Math.abs(c.off)} ms ${c.off > 0 ? 'after' : 'before'} the nearest beat — put it on OM.beat(n)`);
+  }
+  lines.push(...arrangeLines(ext.an, ext.plan, ext.measured));
+  if (ext.plan.stretchNote) lines.push(`warning  ${ext.plan.stretchNote}`);
+  if (score) lines.push('warning  OM.music({ src }) wins over the om-score in this film; the score is not played (remove one of them)');
+  return lines;
+}
+
 export const SFX_HELP = () => Object.entries(SFX).map(([k, v]) => `  ${k.padEnd(8)} ${v.about}`).join('\n');
 
 // The whole soundtrack from a probe (what index.html declares): score, effects, automation, mix, master.
 // With `score` (the om-score ABC text) the music is the agent's composition, fitted to the picture; otherwise
 // score.js composes it from the style.
-export function mixdown(p0, { voiced = false, words = [], voiceLufs = null, musicOff = false, score = null } = {}) {
+export function mixdown(p0, { voiced = false, words = [], voiceLufs = null, musicOff = false, score = null, external = null } = {}) {
   let p;
   try { p = plan({ ...p0, voice: voiced }); } catch (e) { throw new OmError(e.message); }
   const hits = (p0.hits || []).filter((h) => h.at <= p.duration + 0.5);
@@ -403,7 +423,16 @@ export function mixdown(p0, { voiced = false, words = [], voiceLufs = null, musi
 
   const music = new Track(p.duration), fxm = new Track(p.duration);
   let trackInfo = null, composed = null;
-  if (musicOn && score) {
+  if (musicOn && external) {
+    // A real track replaces the synthesized music: the part of the file the plan lays under the film, at the music target.
+    // The score's own gain rides (hit dips, drop breath) belong to the synthesized bed; the narration ducking stays.
+    const r = renderTrack(decode(external.file, RATE, external.plan.stretch || 1), external.plan);
+    music.L.set(r.L); music.R.set(r.R);
+    if (external.plan.arrange) external.measured = measureArrangement(r, external.plan, RATE); // 1 s each side of every join, jumps over 6 dB
+    duck(music, words);
+    const pl = external.plan, an = external.an;
+    trackInfo = `"${external.name}" · ${pl.bpm.toFixed(1)} bpm, confidence ${an.confidence.toFixed(2)}${pl.usable ? '' : ' (low — no clear pulse: trust the sections, not the beats)'}${pl.overridden ? ' · bpm set by OM.music' : ''}${pl.arrange ? ' · re-cut to the film' : pl.start > 0 ? ` · from ${pl.start.toFixed(1)}s` : ''}${pl.looped ? ' · looped on bar lines' : ''}${pl.stretch && pl.stretch !== 1 ? ` · stretched ×${pl.stretch.toFixed(3)}` : ''} ${pl.arrange && pl.arrange.endingKind !== 'fade' ? ` · ends ${pl.arrange.endingKind === 'button' ? 'on a button hit' : `on the track's own ${pl.arrange.ending.type}`}` : ` · fades out ${pl.fade.from.toFixed(1)}→${pl.duration.toFixed(1)}s`}`;
+  } else if (musicOn && score) {
     try { composed = renderComposed(score, { labels: p0.labels, marks: p0.music?.marks, duration: p.duration, seed: p.seed }); } catch (e) { throw new OmError(`om-score: ${e.message}`); }
     if (!p0.music?.kit) p.kit = 'cinematic'; // a written score's hits and risers are orchestral by default
     hits.push(...composed.hits);
@@ -444,7 +473,9 @@ export function mixdown(p0, { voiced = false, words = [], voiceLufs = null, musi
   const musicTarget = voiced ? (voiceLufs != null && isFinite(voiceLufs) ? voiceLufs - 12 : -28) : -18;
   const ml = musicOn ? loudness(music.L, music.R) : -Infinity;
   if (isFinite(ml)) music.scale(undb(musicTarget - ml));
-  const fxGain = undb(voiced ? musicTarget + 18 + 4 : -2); // effects were levelled against a -18 LUFS bed; a little hotter under a voice
+  // Over a real track every effect is a guest: 8 dB lighter by default (OM.music({ sfx: dB offset }) to change), one per cut at most.
+  const sfxOffset = p0.music?.sfx != null && isFinite(Number(p0.music.sfx)) ? Number(p0.music.sfx) : trackInfo ? -8 : 0;
+  const fxGain = undb((voiced ? musicTarget + 18 + 4 : -2) + sfxOffset); // effects were levelled against a -18 LUFS bed; a little hotter under a voice
   const out2 = new Track(p.duration);
   for (let i = 0; i < out2.n; i++) { out2.L[i] = music.L[i] + fx.L[i] * fxGain; out2.R[i] = music.R[i] + fx.R[i] * fxGain; }
   out2.L = biquad(out2.L, 'hp', 30); out2.R = biquad(out2.R, 'hp', 30); // no sub rumble: speakers can't play it, limiters choke on it
@@ -453,7 +484,7 @@ export function mixdown(p0, { voiced = false, words = [], voiceLufs = null, musi
   limit(out2, undb(-1.5));
   const finalLufs = loudness(out2.L, out2.R), peak = db(peakOf(out2));
 
-  return { p, hits, out2, finalLufs, peak, musicOn, musicTarget, trackInfo, composed: composed?.report || null };
+  return { p, hits, out2, finalLufs, peak, musicOn, musicTarget, trackInfo, sfxOffset, composed: composed?.report || null };
 }
 
 export const LIST = () => [
@@ -487,7 +518,38 @@ export async function sound(project, opts = {}, log = () => {}) {
     return 'sound    removed <audio id="om-sound"> — the film is silent (assets/sound.wav is kept)';
   }
   refreshRuntime(project, log);
-  const p0 = await probe(project, html, opts.page);
+  // om sound --music <file> [--start s] [--bpm n]: the track goes into assets/music/ and the declaration into index.html,
+  // so the project reproduces the film on its own. --start / --bpm alone amend the track already declared.
+  let musicFlag = opts.music;
+  const num = (v) => (v == null || v === true || v === '' ? null : Number(v));
+  if (musicFlag === true) throw new OmError('usage: om sound [dir] --music <file> [--start sec] [--bpm n] [--arrange off|auto] [--stretch bpm]   (--music off silences the music)');
+  const declared = readMusicDecl(html);
+  if ((typeof musicFlag === 'string' && musicFlag !== 'off') || ((num(opts.start) != null || num(opts.bpm) != null || num(opts.stretch) != null || opts.arrange) && declared)) {
+    const from = typeof musicFlag === 'string' && musicFlag !== 'off' ? musicFlag : join(project.root, declared.src);
+    const rel = attachMusic(project, from, { start: num(opts.start), bpm: num(opts.bpm), stretch: num(opts.stretch), arrange: opts.arrange === 'off' || opts.arrange === 'auto' ? opts.arrange : null });
+    log(`music    ${rel} declared in index.html as OM.music({ src })`);
+    ({ html, token } = readSource(project));
+    if (musicFlag !== 'off') musicFlag = undefined;
+  }
+  let p0 = await probe(project, html, opts.page);
+  // An external track brings its beat map: the film's cuts (OM.beat…) are read from it, so a changed map means the timeline
+  // may have moved — write it into index.html and read the timeline again until map and film agree.
+  let ext = null, rewrote = false;
+  for (let round = 0; ; round++) {
+    ext = p0.music?.src ? loadExternal(project, p0.music, p0.duration, { labels: p0.labels }) : null;
+    if ((ext ? beatsTag(ext.data) : null) === readBeatsTag(html)) break;
+    if (round >= 3) { log('warning  the beat map keeps moving the film length — the cuts depend on each other; check the OM.beat / OM.downbeat labels'); break; }
+    const cur = readSource(project);
+    writeSource(project, applyBeats(cur.html, ext?.data || null), cur.token, 'om sound (beat map)');
+    rewrote = true;
+    ({ html, token } = readSource(project));
+    p0 = await probe(project, html); // a browser of its own: the lent page still has the old map
+  }
+  if (rewrote) opts.onWrite?.();
+  if (ext) {
+    const f = join(project.root, 'assets', 'music.beats.json'), text = JSON.stringify(ext.data, null, 1);
+    if (!existsSync(f) || readFileSync(f, 'utf8') !== text) { mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, text); }
+  }
   if (p0.errors?.length) log(`warning  the page reported: ${p0.errors.slice(0, 3).join(' | ')}`);
   const cues = CUES.exec(html);
   let words = [];
@@ -504,7 +566,7 @@ export async function sound(project, opts = {}, log = () => {}) {
   const LIB = dirname(fileURLToPath(import.meta.url));
   const stamp = (f) => { try { const st = statSync(f); return `${st.size}:${st.mtimeMs}`; } catch { return null; } };
   const key = createHash('sha256').update(JSON.stringify({
-    p0: { ...p0, errors: undefined }, words, score: readScore(html), voiced: !!voiceTag, voice: voiceFile && stamp(voiceFile), music: opts.music || null,
+    p0: { ...p0, errors: undefined }, words, score: readScore(html), voiced: !!voiceTag, voice: voiceFile && stamp(voiceFile), music: musicFlag || null, ext: ext && { file: stamp(ext.file), map: beatsTag(ext.data) },
     pack: process.env.OM_SAMPLES === 'off' ? 'off' : stamp(join(packDir(), 'manifest.json')),
     code: soundCode(LIB),
   })).digest('hex');
@@ -519,7 +581,7 @@ export async function sound(project, opts = {}, log = () => {}) {
       return m.report.replace(/^took .*$/m, `took     ${((Date.now() - t0) / 1000).toFixed(1)}s — nothing changed since the last run, assets/sound.wav reused (--fresh rebuilds it)`);
     }
   }
-  const { p, hits, out2, finalLufs, peak, musicOn, musicTarget, trackInfo, composed } = mixdown(p0, { voiced: !!voiceTag, words, voiceLufs, musicOff: opts.music === 'off', score: readScore(html) });
+  const { p, hits, out2, finalLufs, peak, musicOn, musicTarget, trackInfo, sfxOffset, composed } = mixdown(p0, { voiced: !!voiceTag, words, voiceLufs, musicOff: musicFlag === 'off', score: readScore(html), external: ext });
   mkdirSync(assets, { recursive: true });
   writeFileSync(wav, toWav(out2));
   const fresh = readSource(project);
@@ -531,8 +593,13 @@ export async function sound(project, opts = {}, log = () => {}) {
   const lines = [
     `sound    ${join(assets, 'sound.wav')}  ${p.duration.toFixed(2)}s  ${finalLufs.toFixed(1)} LUFS, peak ${peak.toFixed(1)} dBFS`,
     !musicOn ? 'music    off' : composed ? `music    om-score "${composed.title}" · ${composed.notes} notes · ${composed.voices.join(' ')} · ends ${composed.end.toFixed(2)}s`
-      : `music    ${trackInfo || describe(p)} · ${p.sections.length} section${p.sections.length > 1 ? 's' : ''} (${p.sections.map((s) => `${s.id}${s.drop ? '◆' : ''}:${s.energy.toFixed(1)}`).join(' ')})`,
+      : trackInfo ? `music    ${trackInfo}`
+      : `music    ${describe(p)} · ${p.sections.length} section${p.sections.length > 1 ? 's' : ''} (${p.sections.map((s) => `${s.id}${s.drop ? '◆' : ''}:${s.energy.toFixed(1)}`).join(' ')})`,
   ];
+  if (trackInfo) {
+    lines.push(...externalLines(ext, p0, readScore(html)));
+    if (ext.plan.arrange) { try { const { arrangePlot } = await import('./beats-report.js'); lines.push(`picture  ${relative(project.root, await arrangePlot(ext.an, ext.plan, join(project.om, 'arrangement.png'), ext.name))}`); } catch (e) { lines.push(`warning  no arrangement picture: ${e.message}`); } }
+  }
   if (composed) {
     try { lines.push(...soundprintReport(project.root, readScore(html)).lines); } catch { /* a score the print cannot read still plays */ }
     lines.push(`fit      ${composed.marks.length ? `marks on the picture: ${composed.marks.join(' · ')}` : 'no !mark:name! matched a scene label — the score plays from the start at its written tempo'}${composed.unmatched.length ? ` · unmatched: ${composed.unmatched.join(', ')}` : ''}`);
@@ -545,7 +612,7 @@ export async function sound(project, opts = {}, log = () => {}) {
     lines.push(`shape    ${p.drop != null ? `drop at ${p.drop.toFixed(2)}s after a ${p.suck.toFixed(2)}s breath · ` : 'no drop (OM.music({ drop: \'sceneId\' }) gives the hero moment a breath and the full band) · '}ending ${p.ending}${p.end != null ? ` at ${p.end.toFixed(2)}s` : ''} · motif ${p.motif.d.map((d) => d + 1).join('-')} · effects kit ${p.kit}`);
     if (p.product) lines.push(`options  ${p.product}: ${PRODUCTS[p.product].styles.map((s, i) => (i === p.choice ? `[${s}]` : s)).join(' · ')} — variant: n picks another, seed: n rerolls key/loop/motif`);
   }
-  if (musicOn && !composed && p.sections.length > 1) lines.push(`grid     every scene starts its music on its cut; the beat bends by up to ${Math.round(p.gridError * 1000)} ms there${p.gridError > 0.06 ? ' — OM.music({ bpm }) + OM.beat(n) keeps the pulse steady across cuts' : ''}`);
+  if (musicOn && !composed && !trackInfo && p.sections.length > 1) lines.push(`grid     every scene starts its music on its cut; the beat bends by up to ${Math.round(p.gridError * 1000)} ms there${p.gridError > 0.06 ? ' — OM.music({ bpm }) + OM.beat(n) keeps the pulse steady across cuts' : ''}`);
   // the energy curve you can't hear: loudness of each stretch between the score's marks (or the scenes)
   if (musicOn) {
     const pts = (composed ? composed.points : p.sections.map((x) => ({ name: x.id, at: x.t }))).filter((x) => x.at >= 0 && x.at < p.duration).sort((a, b) => a.at - b.at);
@@ -555,7 +622,9 @@ export async function sound(project, opts = {}, log = () => {}) {
     const flat = body.length >= 3 && Math.max(...body.map((x) => x.db)) - Math.min(...body.map((x) => x.db)) < 3;
     lines.push(`energy   ${lv.map((x) => `${x.name} ${x.db.toFixed(1)}`).join(' · ')} dB RMS${flat ? ' — flat: every stretch within 3 dB, the film has no contour; give it a stop and a peak (rhythm.md)' : ' — should rise in steps, dip at the stop and peak at the drop (rhythm.md)'}`);
   }
-  lines.push(hits.length ? `effects  ${hits.length} hits: ${Object.entries(counts).map(([k, v]) => `${k}×${v}`).join(', ')}` : 'effects  none — mark the moments that land with OM.sfx(name, at) (om sound --list); a film without hits sounds like a slideshow');
+  if (musicOn && !trackInfo && !composed) lines.push('hint     the music is synthesized and it shows. A real track is better: `om music` lists tracks to pick from, or `om sound --music <file>` uses your own. Synthesized music is the fallback — say so when you deliver.');
+  if (!musicOn) lines.push('warning  no music: effects alone sound like a slideshow with clicks. Deliver with a track (om music) unless the user asked for silence.');
+  lines.push(hits.length ? `effects  ${hits.length} hits: ${Object.entries(counts).map(([k, v]) => `${k}×${v}`).join(', ')}${trackInfo ? ` · ${sfxOffset} dB under the track (OM.music({ sfx }) to change) — one effect per cut at most` : ''}` : 'effects  none — mark the moments that land with OM.sfx(name, at) (om sound --list); a film without hits sounds like a slideshow');
   if (voiceTag) lines.push(`voice    music ducked −10 dB and carved around 2 kHz under ${words.length} words; bed ${musicTarget.toFixed(1)} LUFS${voiceLufs != null ? ` (voice ${voiceLufs.toFixed(1)})` : ''}`);
   lines.push(`took     ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   mkdirSync(project.om, { recursive: true });

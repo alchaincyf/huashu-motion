@@ -337,12 +337,39 @@ skill最大的一块是导演方法：先读产品、找出它的气质，再选
 | `om new` · `om templates` | 新建项目，可以从12个模板起步 |
 | `om studio` | 编辑器：实时预览、场景条、直接改值、在画面上留评论。界面支持中文 / English / Español：跟随浏览器语言，或 `--lang es` / `OM_LANG=es` |
 | `om inbox --wait` · `om look` · `om done` | agent那一侧：接下一条评论、看你点的位置、回报改了什么 |
-| `om sound` · `om voice` · `om samples` | 配乐和音效、口播、真乐器采样包 |
+| `om sound` · `om music` · `om voice` · `om samples` | 配乐和音效、曲库（按片长改编真实曲子）、口播、真乐器采样包 |
 | `om check` · `om qa` · `om still` | 渲染前检查、成片检查、任意时刻截一帧 |
 | `om render` · `om share` · `om export html` · `om fork` | 导出、分享包（GIF＋发帖文案）、分享页、换画幅 |
 | `om learn` · `om undo` · `om doctor` | 经验、撤回、环境检查 |
 
 ---
+
+## 用真实曲子配乐
+
+自己带一首能用的曲子，或者从默认曲库里挑一首，片子按曲子改编，而不是反过来。
+
+```bash
+om music                      # 曲库：默认曲目（om music build 一次性下载）和你自己的
+om music add song.mp3 --mood warm,calm --name "我的曲子"
+om music use <id> my-film     # 复制进项目，并写好 OM.music({ src })
+om sound my-film              # 方案：小节、抬升、接点、结尾，响度在渲染后的音频上实测
+```
+
+`om sound` 读出曲子真实的节拍、小节线、抬升和结尾，按片长改编：曲子自己的开头、整小节丢弃或重复的中段、曲子自己的结尾。接点落在稳定段的小节线或拍上，不跨抬升；渲染后实测有超过6 dB的非原曲响度跳变的方案会被否决。用 `OM.music({ burst, peak, landing })` 说明音乐该在哪里抬起：能做到时，曲子真实的抬升会被放到 burst 或 peak 上，做不到时表里会告诉你片子该挪哪里。曲尾之后的内容（平台的语音标识）永远不会进成片。默认曲库共11首纯音乐，**全部为AI生成**，与软件分开发布（release `music-v1`），按类似CC0的方式放弃权利，见 `music/LICENSE.md`。
+
+| id | 情绪 | bpm | 结尾 |
+|---|---|---|---|
+| `warm-luminance` | warm, lyrical, heartfelt | 121 | 终止式 |
+| `forward-motion` | driving, confident, launch | 120 | 渐隐 |
+| `forward-drive` | driving, energetic, fast-cut | 120 | 硬停 |
+| `calm-tech` | calm, precise, tech | 100 | 终止式 |
+| `bright-step` | bright, upbeat, friendly | 118 | 余音 |
+| `grand-reveal` | epic, orchestral, launch | 128 | 余音 |
+| `gentle-story` | gentle, story, piano | 84 | 余音 |
+| `city-groove` | groove, urban, funky | 110 | 硬停 |
+| `focus-minimal` | minimal, focus, explainer | 97 | 硬停 |
+| `playful-spark` | playful, quirky, light | 125 | 硬停 |
+| `wide-horizon` | wide, hopeful, vision | 93 | 终止式 |
 
 ## 里面有什么
 
