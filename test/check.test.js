@@ -60,6 +60,8 @@ test('om check --source: a film that draws the product instead of showing it is 
   const real = codes('<img src="materials/web-site/screen-01.png">');
   assert.ok(!real.includes('no-real-material') && !real.includes('only-logo'));
   assert.ok(real.includes('no-materials-list'));
+  // a real file whose name only contains "om-" (zoom-in, bottom-bar, custom-chart) is still real material (#5)
+  for (const src of ['materials/zoom-in.png', 'assets/bottom-bar.png', 'assets/custom-chart.png']) assert.ok(!codes(`<img src="${src}">`).includes('no-real-material'), src);
 });
 
 test('check (page): whitespace between tags does not judge a parent by its hidden children', { skip: !findChrome() && 'no Chrome' }, async () => {
